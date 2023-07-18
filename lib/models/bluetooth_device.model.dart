@@ -19,4 +19,13 @@ class BluetoothDevice {
       bondState: map['bondState'] ?? 0,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'address': address,
+      'type': type,
+      'bondState': bondState,
+    };
+  }
 }

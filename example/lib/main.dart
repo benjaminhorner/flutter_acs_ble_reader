@@ -13,43 +13,29 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _deviceInformation = "";
+  String _bleActivity = "";
   bool _isScanning = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _listentToScanResults();
-  }
 
   void _startScan() {
     setState(() {
       _isScanning = true;
+      _bleActivity = "Searching…";
     });
-    FlutterAcsCardReader.scanSmartCardDevices();
+    FlutterAcsCardReader.scanSmartCardDevices().then((results) {
+      if (results.isNotEmpty) {
+        setState(() {
+          _bleActivity = "Found device: ${results[0].name}";
+        });
+      }
+    });
   }
 
-  void _stopScan() {
+  void _stopScan() async {
     FlutterAcsCardReader.stopScanningSmartCardDevices().then((_) {
       setState(() {
+        _bleActivity = "Stopped";
         _isScanning = false;
       });
-    });
-  }
-
-  void _listentToScanResults() {
-    FlutterAcsCardReader.listentToScanResults()
-        .listen((List<ScanResult> results) {
-      for (ScanResult result in results) {
-        if (result.device.name.contains('ACR')) {
-          setState(() {
-            _deviceInformation = result.device.name;
-            FlutterAcsCardReader.readSmartCard(result.device);
-            _isScanning = false;
-            _stopScan();
-          });
-        }
-      }
     });
   }
 
@@ -64,7 +50,10 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Found device: $_deviceInformation\n'),
+              Text(_bleActivity),
+              const SizedBox(
+                height: 8,
+              ),
               ElevatedButton(
                 onPressed: _isScanning ? _stopScan : _startScan,
                 child: Text(_isScanning ? "Stop Scan" : "Start Scan"),

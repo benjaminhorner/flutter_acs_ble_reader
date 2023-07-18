@@ -1,8 +1,16 @@
 package com.benjamin.horner.flutter_acs_card_reader
+import com.benjamin.horner.flutter_acs_card_reader.SmartCardReader
 
+import android.Manifest
+import android.annotation.TargetApi
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.annotation.NonNull
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -13,16 +21,28 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
     private lateinit var bluetoothAdapter: BluetoothAdapter
+    private var isScanning = false
+    private val discoveredDevices: MutableSet<BluetoothDevice> = mutableSetOf()
+    private val smartCardReader = SmartCardReader()
 
-    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(binding.binaryMessenger, "flutter_acs_card_reader")
+    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_acs_card_reader")
         channel.setMethodCallHandler(this)
-        context = binding.applicationContext
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        context = flutterPluginBinding.applicationContext
+
+        // Initialize Bluetooth adapter
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothAdapter = bluetoothManager.adapter
     }
 
-    override fun onMethodCall(call: MethodCall, result: Result) {
+    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         when (call.method) {
+            "scanSmartCardDevices" -> {
+                scanSmartCardDevices(result)
+            }
+            "stopScanningSmartCardDevices" -> {
+                stopScanningSmartCardDevices(result)
+            }
             "readSmartCard" -> {
                 val device = call.argument<Map<String, Any>>("device")
                 if (device != null) {
@@ -37,17 +57,110 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    private fun readSmartCard(device: Map<String, Any>, result: Result) {
-        val bluetoothDevice = bluetoothAdapter.getRemoteDevice(device["address"] as String)
-        // Perform the SmartCard reading operations using the bluetoothDevice
+    private fun scanSmartCardDevices(result: MethodChannel.Result, timeoutMillis: Long = 10000L) {
+        if (!isBluetoothSupported()) {
+            result.error("BLUETOOTH_UNSUPPORTED", "Bluetooth is not supported on this device", null)
+            return
+        }
 
-        // Replace the following code with the actual SmartCard reading logic
-        val data = "SmartCard data"
+        if (!isBluetoothEnabled()) {
+            result.error("BLUETOOTH_DISABLED", "Bluetooth is disabled", null)
+            return
+        }
 
-        result.success(data)
+        if (!isLocationPermissionGranted()) {
+            result.error("LOCATION_PERMISSION_DENIED", "Location permission is required to scan for Bluetooth devices", null)
+            return
+        }
+
+        if (isScanning) {
+            result.error("SCAN_ALREADY_IN_PROGRESS", "Bluetooth scan is already in progress", null)
+            return
+        }
+
+        try {
+            isScanning = true
+            discoveredDevices.clear()
+            val scanCallback = object : BluetoothAdapter.LeScanCallback {
+                override fun onLeScan(device: BluetoothDevice?, rssi: Int, scanRecord: ByteArray?) {
+                    if (device != null && device.name?.startsWith("ACR") == true) {
+                        discoveredDevices.add(device)
+                    }
+                }
+            }
+
+            bluetoothAdapter.startLeScan(scanCallback)
+
+            android.os.Handler().postDelayed({
+                stopBluetoothScan()
+                val deviceList = discoveredDevices.map { mapDeviceToMap(it) }
+                result.success(deviceList)
+                isScanning = false
+            }, timeoutMillis)
+
+        } catch (e: Exception) {
+            result.error("SCAN_ERROR", e.message, null)
+            isScanning = false
+        }
     }
 
-    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+
+    private fun stopScanningSmartCardDevices(result: MethodChannel.Result) {
+        if (!isScanning) {
+            result.error("SCAN_NOT_IN_PROGRESS", "Bluetooth scan is not in progress", null)
+            return
+        }
+
+        try {
+            stopBluetoothScan()
+            result.success(null)
+            isScanning = false
+        } catch (e: Exception) {
+            result.error("STOP_SCAN_ERROR", e.message, null)
+        }
+    }
+
+
+    private fun readSmartCard(device: Map<String, Any>, result: Result) {
+        val address = device["address"] as? String
+        if (address != null) {
+            val bluetoothDevice = bluetoothAdapter.getRemoteDevice(address)
+            val smartCardData = smartCardReader.readSmartCard(bluetoothDevice)
+            result.success(smartCardData)
+        } else {
+            result.error("INVALID_DEVICE", "Invalid device address", null)
+        }
+    }
+
+    private fun mapDeviceToMap(device: BluetoothDevice): Map<String, Any?> {
+        val deviceMap = mutableMapOf<String, Any?>()
+        deviceMap["name"] = device.name
+        deviceMap["address"] = device.address
+        deviceMap["type"] = device.type
+        deviceMap["bondState"] = device.bondState
+        return deviceMap
+    }
+
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+    private fun stopBluetoothScan() {
+        isScanning = false
+        bluetoothAdapter.stopLeScan(null)
+    }
+
+    private fun isBluetoothSupported(): Boolean {
+        return BluetoothAdapter.getDefaultAdapter() != null
+    }
+
+    private fun isBluetoothEnabled(): Boolean {
+        return bluetoothAdapter.isEnabled
+    }
+
+    private fun isLocationPermissionGranted(): Boolean {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+        stopBluetoothScan()
     }
 }
