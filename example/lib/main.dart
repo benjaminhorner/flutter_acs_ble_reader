@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_acs_card_reader/flutter_acs_card_reader.dart';
+import 'package:flutter_acs_card_reader/models/bluetooth_device.model.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,8 +24,11 @@ class _MyAppState extends State<MyApp> {
     });
     FlutterAcsCardReader.scanSmartCardDevices().then((results) {
       if (results.isNotEmpty) {
+        BluetoothDevice device = results[0];
+        _readCard(device);
         setState(() {
-          _bleActivity = "Found device: ${results[0].name}";
+          _isScanning = false;
+          _bleActivity = "Found device: ${device.name}";
         });
       }
     });
@@ -37,6 +41,14 @@ class _MyAppState extends State<MyApp> {
         _isScanning = false;
       });
     });
+  }
+
+  void _readCard(BluetoothDevice device) {
+    FlutterAcsCardReader.readSmartCard(device).then(
+      (value) {
+        print(value);
+      },
+    );
   }
 
   @override

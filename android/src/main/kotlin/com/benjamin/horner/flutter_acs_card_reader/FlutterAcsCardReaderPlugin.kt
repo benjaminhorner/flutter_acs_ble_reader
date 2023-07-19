@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.annotation.NonNull
@@ -16,10 +17,13 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 
-class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler {
+class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
+    private lateinit var activity: Activity
     private lateinit var bluetoothAdapter: BluetoothAdapter
     private var isScanning = false
     private val discoveredDevices: MutableSet<BluetoothDevice> = mutableSetOf()
@@ -33,6 +37,20 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler {
         // Initialize Bluetooth adapter
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        activity = binding.activity
+    }
+
+    override fun onDetachedFromActivity() {
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity;
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -125,7 +143,7 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler {
         val address = device["address"] as? String
         if (address != null) {
             val bluetoothDevice = bluetoothAdapter.getRemoteDevice(address)
-            val smartCardData = smartCardReader.readSmartCard(bluetoothDevice)
+            val smartCardData = smartCardReader.readSmartCard(bluetoothDevice, activity, context)
             result.success(smartCardData)
         } else {
             result.error("INVALID_DEVICE", "Invalid device address", null)
