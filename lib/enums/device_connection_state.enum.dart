@@ -1,0 +1,4 @@
+enum DeviceConnectionState {
+  searching,
+  stopped,
+}

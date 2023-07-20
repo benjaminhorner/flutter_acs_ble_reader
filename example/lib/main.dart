@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_acs_card_reader/flutter_acs_card_reader.dart';
-import 'package:flutter_acs_card_reader/models/bluetooth_device.model.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,19 +14,20 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String _bleActivity = "";
-  bool _isScanning = false;
+  final bool _isScanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _registerListeners();
+  }
 
   void _startScan() {
-    setState(() {
-      _isScanning = true;
-      _bleActivity = "Searching…";
-    });
     FlutterAcsCardReader.scanSmartCardDevices().then((results) {
       if (results.isNotEmpty) {
         BluetoothDevice device = results[0];
         _readCard(device);
         setState(() {
-          _isScanning = false;
           _bleActivity = "Found device: ${device.name}";
         });
       }
@@ -35,12 +35,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _stopScan() async {
-    FlutterAcsCardReader.stopScanningSmartCardDevices().then((_) {
-      setState(() {
-        _bleActivity = "Stopped";
-        _isScanning = false;
-      });
-    });
+    FlutterAcsCardReader.stopScanningSmartCardDevices();
   }
 
   void _readCard(BluetoothDevice device) {
@@ -49,6 +44,15 @@ class _MyAppState extends State<MyApp> {
         print(value);
       },
     );
+  }
+
+  void _registerListeners() {
+    FlutterAcsCardReader.registerDeviceConnectionStateListener(
+        (DeviceConnectionState state) {
+      setState(() {
+        _bleActivity = state.toString();
+      });
+    });
   }
 
   @override

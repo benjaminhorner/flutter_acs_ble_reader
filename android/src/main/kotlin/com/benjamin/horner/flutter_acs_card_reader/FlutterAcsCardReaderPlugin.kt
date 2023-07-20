@@ -1,5 +1,7 @@
 package com.benjamin.horner.flutter_acs_card_reader
 import com.benjamin.horner.flutter_acs_card_reader.SmartCardReader
+import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
+import com.benjamin.horner.flutter_acs_card_reader.DeviceConnectionStateNotifier
 
 import android.Manifest
 import android.annotation.TargetApi
@@ -28,6 +30,8 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
     private var isScanning = false
     private val discoveredDevices: MutableSet<BluetoothDevice> = mutableSetOf()
     private val smartCardReader = SmartCardReader()
+    private val cardConnectionStateNotifier = CardConnectionStateNotifier()
+    private val deviceConnectionStateNotifier = DeviceConnectionStateNotifier()
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_acs_card_reader")
@@ -73,7 +77,7 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
                 result.notImplemented()
             }
         }
-    }
+    }    
 
     private fun scanSmartCardDevices(result: MethodChannel.Result, timeoutMillis: Long = 10000L) {
         if (!isBluetoothSupported()) {
@@ -97,6 +101,7 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         }
 
         try {
+            deviceConnectionStateNotifier.updateState("SEARCHING", channel)
             isScanning = true
             discoveredDevices.clear()
             val scanCallback = object : BluetoothAdapter.LeScanCallback {
@@ -132,6 +137,7 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         try {
             stopBluetoothScan()
             result.success(null)
+            deviceConnectionStateNotifier.updateState("STOPPED", channel)
             isScanning = false
         } catch (e: Exception) {
             result.error("STOP_SCAN_ERROR", e.message, null)
