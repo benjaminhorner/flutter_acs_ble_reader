@@ -11,6 +11,7 @@ import android.content.Context
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -31,6 +32,13 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
     private val smartCardReader = SmartCardReader()
     private val DEVICE_SCAN_SEARCHING: String = "SEARCHING"
     private val DEVICE_SCAN_STOPPED: String = "STOPPED"
+    private val STOP_SCAN_ERROR: String = "STOP_SCAN_ERROR"
+    private val SCAN_NOT_IN_PROGRESS: String = "SCAN_NOT_IN_PROGRESS"
+    private val SCAN_ERROR: String = "SCAN_ERROR"
+    private val BLUETOOTH_UNSUPPORTED: String = "BLUETOOTH_UNSUPPORTED"
+    private val BLUETOOTH_DISABLED: String = "BLUETOOTH_DISABLED"
+    private val LOCATION_PERMISSION_DENIED: String = "LOCATION_PERMISSION_DENIED"
+    private val SCAN_ALREADY_IN_PROGRESS: String = "SCAN_ALREADY_IN_PROGRESS"
     private val deviceConnectionStatusNotifier: DeviceConnectionStatusNotifier = DeviceConnectionStatusNotifier()
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -79,30 +87,28 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         }
     }   
 
-    // Notifiers
-    //
-    private fun senDeviceConnectionStatusEvent(eventData: Any) {
-        channel.invokeMethod("onDeviceConnectionStatusEvent", eventData)
-    }
-
     private fun scanSmartCardDevices(timeoutMillis: Long = 10000L) {
         if (!isBluetoothSupported()) {
-            //result.error("BLUETOOTH_UNSUPPORTED", "Bluetooth is not supported on this device", null)
+            Log.e("BLUETOOTH_UNSUPPORTED", "Bluetooth is not supported on this device")
+            deviceConnectionStatusNotifier.updateState(BLUETOOTH_UNSUPPORTED, channel)
             return
         }
 
         if (!isBluetoothEnabled()) {
-            //result.error("BLUETOOTH_DISABLED", "Bluetooth is disabled", null)
+            Log.e("BLUETOOTH_DISABLED", "Bluetooth is disabled")
+            deviceConnectionStatusNotifier.updateState(BLUETOOTH_DISABLED, channel)
             return
         }
 
         if (!isLocationPermissionGranted()) {
-            //result.error("LOCATION_PERMISSION_DENIED", "Location permission is required to scan for Bluetooth devices", null)
+            Log.e("LOCATION_PERMISSION_DENIED", "Location permission is required to scan for Bluetooth devices")
+            deviceConnectionStatusNotifier.updateState(LOCATION_PERMISSION_DENIED, channel)
             return
         }
 
         if (isScanning) {
-            //result.error("SCAN_ALREADY_IN_PROGRESS", "Bluetooth scan is already in progress", null)
+            Log.e("SCAN_ALREADY_IN_PROGRESS", "Bluetooth scan is already in progress")
+            deviceConnectionStatusNotifier.updateState(SCAN_ALREADY_IN_PROGRESS, channel)
             return
         }
 
@@ -125,12 +131,13 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
             android.os.Handler().postDelayed({
                 stopBluetoothScan()
                 val deviceList = discoveredDevices.map { mapDeviceToMap(it) }
-                //result.success(null)
+                deviceConnectionStatusNotifier.updateState(DEVICE_SCAN_STOPPED, channel)
                 isScanning = false
             }, timeoutMillis)
 
         } catch (e: Exception) {
-            //result.error("SCAN_ERROR", e.message, null)
+            Log.e("SCAN_ERROR", e.message ?: "Unknown error")
+            deviceConnectionStatusNotifier.updateState(SCAN_ERROR, channel)
             isScanning = false
         }
     }
@@ -138,17 +145,18 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
 
     private fun stopScanningSmartCardDevices() {
         if (!isScanning) {
-            //result.error("SCAN_NOT_IN_PROGRESS", "Bluetooth scan is not in progress", null)
+            Log.e("SCAN_NOT_IN_PROGRESS", "Bluetooth scan is not in progress")
+            deviceConnectionStatusNotifier.updateState(SCAN_NOT_IN_PROGRESS, channel)
             return
         }
 
         try {
-            deviceConnectionStatusNotifier.updateState(DEVICE_SCAN_STOPPED, channel)
             stopBluetoothScan()
-            //result.success(null)
+            deviceConnectionStatusNotifier.updateState(DEVICE_SCAN_STOPPED, channel)
             isScanning = false
         } catch (e: Exception) {
-            //result.error("STOP_SCAN_ERROR", e.message, null)
+            Log.e("STOP_SCAN_ERROR", e.message ?: "Unknown error")
+            deviceConnectionStatusNotifier.updateState(STOP_SCAN_ERROR, channel)
         }
     }
 

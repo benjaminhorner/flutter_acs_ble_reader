@@ -55,64 +55,9 @@ class FlutterAcsCardReader {
             onEvent(DeviceConnectionState.stopped);
             break;
           default:
-            onEvent(DeviceConnectionState.stopped);
+            onEvent(DeviceConnectionState.error);
         }
       }
     });
   }
-
-  //static Future<void> registerDeviceFoundListener(
-  //    Function(BluetoothDevice) onDeviceFoundEvent) async {
-  //  _channel.setMethodCallHandler((MethodCall call) async {
-  //    if (call.method == 'onDeviceFoundEvent') {
-  //      final dynamic eventData = call.arguments;
-  //      final BluetoothDevice device =
-  //          BluetoothDevice.fromMap(jsonDecode(jsonEncode(eventData)));
-  //      onDeviceFoundEvent(device);
-  //    }
-  //  });
-  //}
-
-  //static Future<void> registerDeviceConnectionStateListener(
-  //    Function(DeviceConnectionState) onDeviceConnectionEvent) async {
-  //  _channel.setMethodCallHandler((MethodCall call) async {
-  //    if (call.method == 'onDeviceConnectionEvent') {
-  //      final dynamic eventData = call.arguments;
-  //      switch (eventData) {
-  //        case "STOPPED":
-  //          onDeviceConnectionEvent(DeviceConnectionState.stopped);
-  //          break;
-  //        case "SEARCHING":
-  //          onDeviceConnectionEvent(DeviceConnectionState.searching);
-  //          break;
-  //        default:
-  //          onDeviceConnectionEvent(DeviceConnectionState.stopped);
-  //          break;
-  //      }
-  //    }
-  //  });
-  //}
-
-  //static Future<void> registerCardConnectionStateListener(
-  //    Function(CardConnectionState) onCardConnectionEvent) async {
-  //  _channel.setMethodCallHandler((MethodCall call) async {
-  //    if (call.method == 'onCardConnectionEvent') {
-  //      final dynamic eventData = call.arguments;
-  //      switch (eventData) {
-  //        case "CONNECTED":
-  //          onCardConnectionEvent(CardConnectionState.connected);
-  //          break;
-  //        case "DISCONNECTED":
-  //          onCardConnectionEvent(CardConnectionState.disconnected);
-  //          break;
-  //        case "BONDING":
-  //          onCardConnectionEvent(CardConnectionState.bonding);
-  //          break;
-  //        default:
-  //          onCardConnectionEvent(CardConnectionState.disconnected);
-  //          break;
-  //      }
-  //    }
-  //  });
-  //}
 }
