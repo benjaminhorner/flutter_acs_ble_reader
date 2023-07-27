@@ -13,8 +13,10 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _bleActivity = "";
-  final bool _isScanning = false;
+  String _deviceActivity = "";
+  final String _deviceName = "";
+  final String _cardActivity = "";
+  bool _isScanning = false;
 
   @override
   void initState() {
@@ -23,18 +25,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _startScan() {
-    FlutterAcsCardReader.scanSmartCardDevices().then((results) {
-      if (results.isNotEmpty) {
-        BluetoothDevice device = results[0];
-        _readCard(device);
-        setState(() {
-          _bleActivity = "Found device: ${device.name}";
-        });
-      }
-    });
+    FlutterAcsCardReader.scanSmartCardDevices();
   }
 
-  void _stopScan() async {
+  void _stopScan() {
     FlutterAcsCardReader.stopScanningSmartCardDevices();
   }
 
@@ -47,10 +41,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _registerListeners() {
-    FlutterAcsCardReader.registerDeviceConnectionStateListener(
+    FlutterAcsCardReader.registerDeviceConnectionStatusEventListener(
         (DeviceConnectionState state) {
       setState(() {
-        _bleActivity = state.toString();
+        _isScanning = state == DeviceConnectionState.searching ? true : false;
+        _deviceActivity = state.toString();
       });
     });
   }
@@ -66,7 +61,15 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_bleActivity),
+              Text("Device state: $_deviceActivity"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text("Found device: $_deviceName"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text("Card state: $_cardActivity"),
               const SizedBox(
                 height: 8,
               ),
