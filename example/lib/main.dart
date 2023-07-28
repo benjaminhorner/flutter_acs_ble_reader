@@ -44,13 +44,13 @@ class _MyAppState extends State<MyApp> {
     FlutterAcsCardReader.stopScanningSmartCardDevices();
   }
 
-  void _readCard(BluetoothDevice device) {
-    FlutterAcsCardReader.readSmartCard(device).then(
-      (value) {
-        print(value);
-      },
-    );
-  }
+  //void _readCard(BluetoothDevice device) {
+  //  FlutterAcsCardReader.readSmartCard(device).then(
+  //    (value) {
+  //      print(value);
+  //    },
+  //  );
+  //}
 
   void _registerListeners() {
     // Start listening to events
@@ -74,9 +74,9 @@ class _MyAppState extends State<MyApp> {
     });
 
     // Listen to Location Status
-    FlutterAcsCardReader.locationIsGrantedStream.listen((bool granted) {
+    FlutterAcsCardReader.bluetoothStatusStream.listen((BluetoothStatus status) {
       setState(() {
-        _locationGrantedStatus = granted ? "GRANTED" : "DENIED";
+        _locationGrantedStatus = status.toString();
       });
     });
   }
