@@ -58,15 +58,15 @@ class FlutterAcsCardReader {
     }
   }
 
-  //static Future<String> readSmartCard(BluetoothDevice device) async {
-  //  try {
-  //    Map<String, dynamic> mappedDevice = device.toMap();
-  //    return await _channel
-  //        .invokeMethod('readSmartCard', {'device': mappedDevice});
-  //  } catch (e) {
-  //    throw Exception('Error reading smart card: $e');
-  //  }
-  //}
+  static Future<String> readSmartCard(BluetoothDevice device) async {
+    try {
+      Map<String, dynamic> mappedDevice = _deviceToMap(device);
+      return await _channel
+          .invokeMethod('readSmartCard', {'device': mappedDevice});
+    } catch (e) {
+      throw Exception('Error reading smart card: $e');
+    }
+  }
 
   /// Start Streams
   ///
@@ -127,5 +127,13 @@ class FlutterAcsCardReader {
       }
     });
     FlutterBluePlus.startScan(timeout: Duration(seconds: timeoutSeconds));
+  }
+
+  static Map<String, dynamic> _deviceToMap(BluetoothDevice device) {
+    return {
+      'name': device.localName,
+      'address': device.remoteId.str,
+      'type': device.type.index,
+    };
   }
 }

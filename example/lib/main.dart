@@ -44,13 +44,13 @@ class _MyAppState extends State<MyApp> {
     FlutterAcsCardReader.stopScanningSmartCardDevices();
   }
 
-  //void _readCard(BluetoothDevice device) {
-  //  FlutterAcsCardReader.readSmartCard(device).then(
-  //    (value) {
-  //      print(value);
-  //    },
-  //  );
-  //}
+  void _readCard(BluetoothDevice device) {
+    FlutterAcsCardReader.readSmartCard(device).then(
+      (value) {
+        print(value);
+      },
+    );
+  }
 
   void _registerListeners() {
     // Start listening to events
@@ -67,10 +67,12 @@ class _MyAppState extends State<MyApp> {
     });
 
     // Listen to Found devices
-    FlutterAcsCardReader.deviceFoundEventStream.listen((dynamic device) {
+    FlutterAcsCardReader.deviceFoundEventStream
+        .listen((BluetoothDevice device) {
       setState(() {
-        _deviceName = device.name;
+        _deviceName = device.localName;
       });
+      _readCard(device);
     });
 
     // Listen to Location Status
