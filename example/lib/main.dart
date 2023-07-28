@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_acs_card_reader/flutter_acs_card_reader.dart';
 
@@ -13,8 +15,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  StreamSubscription<DeviceConnectionState?>? _deviceConnectionStateStream;
+  StreamSubscription<BluetoothDevice?>? _deviceFoundEventStream;
   String _deviceActivity = "";
-  final String _deviceName = "";
+  String _deviceName = "";
+  String _locationGrantedStatus = "UNKNOWN";
   final String _cardActivity = "";
   bool _isScanning = false;
 
@@ -22,6 +27,13 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _registerListeners();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _deviceConnectionStateStream?.cancel();
+    _deviceFoundEventStream?.cancel();
   }
 
   void _startScan() {
@@ -41,11 +53,30 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _registerListeners() {
-    FlutterAcsCardReader.registerDeviceConnectionStatusEventListener(
-        (DeviceConnectionState state) {
+    // Start listening to events
+    FlutterAcsCardReader.startListeningToEvents();
+
+    // Listen to device connection status
+    _deviceConnectionStateStream = FlutterAcsCardReader
+        .deviceConnectionStateStream
+        .listen((DeviceConnectionState state) {
       setState(() {
         _isScanning = state == DeviceConnectionState.searching ? true : false;
         _deviceActivity = state.toString();
+      });
+    });
+
+    // Listen to Found devices
+    FlutterAcsCardReader.deviceFoundEventStream.listen((dynamic device) {
+      setState(() {
+        _deviceName = device.name;
+      });
+    });
+
+    // Listen to Location Status
+    FlutterAcsCardReader.locationIsGrantedStream.listen((bool granted) {
+      setState(() {
+        _locationGrantedStatus = granted ? "GRANTED" : "DENIED";
       });
     });
   }
@@ -61,6 +92,10 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Text("Location status: $_locationGrantedStatus"),
+              const SizedBox(
+                height: 8,
+              ),
               Text("Device state: $_deviceActivity"),
               const SizedBox(
                 height: 8,

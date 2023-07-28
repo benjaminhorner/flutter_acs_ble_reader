@@ -1,6 +1,7 @@
 import 'dart:async';
 
 // Import
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'enums/device_connection_state.enum.dart';
 import 'models/bluetooth_device.model.dart';
@@ -13,6 +14,23 @@ export 'enums/device_connection_state.enum.dart';
 class FlutterAcsCardReader {
   static const MethodChannel _channel =
       MethodChannel('flutter_acs_card_reader');
+
+  // Stream controllers for each type of event
+  static final StreamController<DeviceConnectionState>
+      _deviceConnectionStateController =
+      StreamController<DeviceConnectionState>.broadcast();
+  static final StreamController<BluetoothDevice> _deviceFoundEventController =
+      StreamController<BluetoothDevice>.broadcast();
+  static final StreamController<bool> _locationIsGrantedController =
+      StreamController<bool>.broadcast();
+
+  // Streams to expose for listening to events
+  static Stream<DeviceConnectionState> get deviceConnectionStateStream =>
+      _deviceConnectionStateController.stream;
+  static Stream<BluetoothDevice> get deviceFoundEventStream =>
+      _deviceFoundEventController.stream;
+  static Stream<bool> get locationIsGrantedStream =>
+      _locationIsGrantedController.stream;
 
   static Future<void> scanSmartCardDevices({int timeoutMillis = 10000}) async {
     try {
@@ -40,24 +58,51 @@ class FlutterAcsCardReader {
     }
   }
 
-  /// Listeners
+  /// Start Streams
   ///
-  static Future<void> registerDeviceConnectionStatusEventListener(
-      Function(DeviceConnectionState) onEvent) async {
+  static void startListeningToEvents() {
     _channel.setMethodCallHandler((MethodCall call) async {
       if (call.method == 'onDeviceConnectionStatusEvent') {
         final dynamic eventData = call.arguments;
+        debugPrint("onDeviceConnectionStatusEvent is $eventData");
         switch (eventData) {
           case "SEARCHING":
-            onEvent(DeviceConnectionState.searching);
+            _deviceConnectionStateController
+                .add(DeviceConnectionState.searching);
             break;
           case "STOPPED":
-            onEvent(DeviceConnectionState.stopped);
+            _deviceConnectionStateController.add(DeviceConnectionState.stopped);
             break;
           default:
-            onEvent(DeviceConnectionState.error);
+            _deviceConnectionStateController.add(DeviceConnectionState.error);
         }
+      } else if (call.method == 'onDeviceFoundEvent') {
+        try {
+          final dynamic eventData = call.arguments;
+          debugPrint("onDeviceFoundEvent is $eventData");
+          final BluetoothDevice device = BluetoothDevice.fromMap(eventData);
+          _deviceFoundEventController.add(device);
+        } catch (e) {
+          rethrow;
+        }
+      } else if (call.method == 'onLocationPermissionResult') {
+        bool granted = call.arguments as bool;
+        debugPrint("onLocationPermissionResult is $granted");
+        _locationIsGrantedController.add(granted);
       }
     });
+  }
+
+  /// Stop Streams
+  void stopListeningToDeviceConnectionStatusEvents() {
+    _deviceConnectionStateController.close();
+  }
+
+  void stopListeningToDeviceFoundEvents() {
+    _deviceFoundEventController.close();
+  }
+
+  void stopListeningToLocationIsGrantedEvents() {
+    _locationIsGrantedController.close();
   }
 }
