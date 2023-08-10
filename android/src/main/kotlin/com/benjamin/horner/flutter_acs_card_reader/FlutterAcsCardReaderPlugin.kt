@@ -1,8 +1,7 @@
 package com.benjamin.horner.flutter_acs_card_reader
+
 import com.benjamin.horner.flutter_acs_card_reader.SmartCardReader
-import com.benjamin.horner.flutter_acs_card_reader.DeviceConnectionStatusNotifier
-import com.benjamin.horner.flutter_acs_card_reader.DeviceNotifier
-import com.benjamin.horner.flutter_acs_card_reader.BluetoothAuthStatusNotifier
+import com.benjamin.horner.flutter_acs_card_reader.Driver
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -23,13 +22,14 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
     private lateinit var context: Context
     private lateinit var activity: Activity
     private lateinit var bluetoothAdapter: BluetoothAdapter
+    private lateinit var smartCardReader: SmartCardReader
     private var isScanning: Boolean = false
-    private val smartCardReader = SmartCardReader()
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_acs_card_reader")
         channel.setMethodCallHandler(this)
         context = flutterPluginBinding.applicationContext
+        smartCardReader = SmartCardReader(channel)
 
         // Initialize Bluetooth adapter
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -54,8 +54,9 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         when (call.method) {
             "readSmartCard" -> {
                 val device = call.argument<Map<String, Any>>("device")
-                if (device != null) {
-                    readSmartCard(device, result)
+                val driver = call.argument<Map<String, Any>>("driver")
+                if (device != null && driver != null) {
+                    readSmartCard(device, result, driver)
                 } else {
                     result.error("INVALID_DEVICE", "Invalid device parameter", null)
                 }
@@ -66,11 +67,24 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         }
     }   
 
-    private fun readSmartCard(device: Map<String, Any>, result: Result) {
+    private fun readSmartCard(device: Map<String, Any>, result: Result, driverMap: Map<String, Any>) {
         val address = device["address"] as? String
-        if (address != null) {
+        val card = driverMap["card"] as? String
+        val name = driverMap["name"] as? String
+        val firstName = driverMap["firstName"] as? String
+        val email = driverMap["email"] as? String
+        val phone = driverMap["phone"] as? String
+
+        if (address != null && card != null && firstName != null && name != null && email != null && phone != null) {
+            val driver = Driver(
+                carte = card,
+                nom = name,
+                prenom = firstName,
+                email = email,
+                tel = phone
+            )
             val bluetoothDevice = bluetoothAdapter.getRemoteDevice(address)
-            val smartCardData = smartCardReader.readSmartCard(bluetoothDevice, activity, context)
+            val smartCardData = smartCardReader.readSmartCard(bluetoothDevice, activity, context, driver)
             result.success(smartCardData)
         } else {
             result.error("INVALID_DEVICE", "Invalid device address", null)
