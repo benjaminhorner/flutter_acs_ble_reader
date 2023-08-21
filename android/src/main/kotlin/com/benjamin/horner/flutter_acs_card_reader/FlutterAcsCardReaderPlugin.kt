@@ -58,8 +58,11 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
                 if (device != null && driver != null) {
                     readSmartCard(device, result, driver)
                 } else {
-                    result.error("INVALID_DEVICE", "Invalid device parameter", null)
+                    result.error("INVALID_DEVICE", "Invalid device or driver parameter", null)
                 }
+            }
+            "stopGattConnection" -> {
+                stopGattConnection()
             }
             else -> {
                 result.notImplemented()
@@ -84,11 +87,14 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
                 tel = phone
             )
             val bluetoothDevice = bluetoothAdapter.getRemoteDevice(address)
-            val smartCardData = smartCardReader.readSmartCard(bluetoothDevice, activity, context, driver)
-            result.success(smartCardData)
+            smartCardReader.readSmartCard(bluetoothDevice, activity, context, driver)
         } else {
             result.error("INVALID_DEVICE", "Invalid device address", null)
         }
+    }
+
+    private fun stopGattConnection() {
+        smartCardReader.disconnectReader()
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {

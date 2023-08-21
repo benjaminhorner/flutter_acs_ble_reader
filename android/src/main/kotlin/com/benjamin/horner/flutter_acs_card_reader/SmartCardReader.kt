@@ -2,13 +2,14 @@ package com.benjamin.horner.flutter_acs_card_reader
 
 import com.benjamin.horner.flutter_acs_card_reader.SmartCardInitializer
 import com.benjamin.horner.flutter_acs_card_reader.OnUpdateConnectionState
-import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
+//import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
 import com.benjamin.horner.flutter_acs_card_reader.FinalCardStatus
 import com.benjamin.horner.flutter_acs_card_reader.CommonUtils
 import com.benjamin.horner.flutter_acs_card_reader.MathUtils
 import com.benjamin.horner.flutter_acs_card_reader.TGUtils
 import com.benjamin.horner.flutter_acs_card_reader.StringUtils
 import com.benjamin.horner.flutter_acs_card_reader.Driver
+import com.benjamin.horner.flutter_acs_card_reader.FlutterACSCardReaderBluetoothReaderGattCallback
 import com.sogestmatic.wrapper.Wrapper
 
 import android.bluetooth.BluetoothDevice
@@ -27,23 +28,24 @@ import java.util.Date
 // ACS
 import com.acs.smartcard.Reader
 import com.acs.bluetooth.BluetoothReader
-import com.acs.bluetooth.BluetoothReaderManager
-import com.acs.bluetooth.BluetoothReaderGattCallback
 import com.acs.bluetooth.Acr1255uj1Reader
 import com.acs.bluetooth.Acr3901us1Reader
 
 private val smartCardInitializer = SmartCardInitializer()
 
 class SmartCardReader
-    (val channel: MethodChannel) {
+    (private val channel: MethodChannel) {
+    // NEW
+    private lateinit var gattCallback: FlutterACSCardReaderBluetoothReaderGattCallback
+
+    // OLD
     private lateinit var device: BluetoothDevice
     private lateinit var activity: Activity
     private lateinit var driver: Driver
     private var sReponse520: String = ""
     private var mBluetoothReader: BluetoothReader? = null
-    private var mBluetoothReaderManager: BluetoothReaderManager? = null
-    private var mBluetoothGatt: BluetoothGatt? = null
-    private var mGattCallback: BluetoothReaderGattCallback? = null
+    //private var mBluetoothReaderManager: BluetoothReaderManager? = null
+    private var bluetoothGatt: BluetoothGatt? = null
     private var bluetoothCardReadEnd: Boolean = false
     private var bluetoothReaderIsPowered: Boolean = false
     private var needsAuthentication: Boolean = false
@@ -57,7 +59,7 @@ class SmartCardReader
     private var isAuthenticated: Boolean = false
     private var bluetoothIsReadingCard: Boolean = false
     private var onUpdateConnectionState: OnUpdateConnectionState? = null
-    private var cardConnectionStateNotifier: CardConnectionStateNotifier = CardConnectionStateNotifier()
+    //private var cardConnectionStateNotifier: CardConnectionStateNotifier = CardConnectionStateNotifier()
     private var mConnectState = BluetoothReader.STATE_DISCONNECTED
     private var FINAL_MASTER_KEY: String? = null
     private var FINAL_APDU_COMMAND: String? = null
@@ -68,21 +70,6 @@ class SmartCardReader
     private var nSelect: Int = 0
     private var listSelect: ArrayList<Wrapper>? = null
     private var sResponse: String = ""
-
-    private val TAG: String = "TAG"
-
-    /* Default master key. */
-    private val DEFAULT_3901_MASTER_KEY: String = "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF"
-    /* Get 8 bytes random number APDU. */
-    private val DEFAULT_3901_APDU_COMMAND: String = "80 84 00 00 08"
-    /* Get Serial Number command (0x02) escape command. */
-    private val DEFAULT_3901_ESCAPE_COMMAND: String = "02"
-    /* Default master key. */
-    private val DEFAULT_1255_MASTER_KEY: String = "ACR1255U-J1 Auth"
-    /* Read 16 bytes from the binary block 0x04 (MIFARE 1K or 4K). */
-    private val DEFAULT_1255_APDU_COMMAND: String = "FF B0 00 04 01"
-    /* Get firmware version escape command. */
-    private val DEFAULT_1255_ESCAPE_COMMAND: String = "E0 00 00 18 00"
 
     // APDU SELECT
     private val MF: String = "00 A4 02 0C 02 3F 00"
@@ -150,79 +137,113 @@ class SmartCardReader
     private var IS_TG2: Boolean = false
     private var TIMESTAMP: Int = 0
 
-    fun readSmartCard(device: BluetoothDevice, activity: Activity, context: Context, driver: Driver): String {
-        mGattCallback = BluetoothReaderGattCallback()
-        mBluetoothReaderManager = BluetoothReaderManager()
+    fun readSmartCard(device: BluetoothDevice, activity: Activity, context: Context, driver: Driver) {
+        gattCallback = FlutterACSCardReaderBluetoothReaderGattCallback(context, channel, activity)
         this.device = device
         this.activity = activity
         this.driver = driver
 
-        mGattCallback!!.setOnConnectionStateChangeListener { gatt, state, newState ->
-            try {
-                    //onUpdateConnectionState?.updateState(state, gatt.connect(), newState)
+        //mGattCallback!!.setOnConnectionStateChangeListener { gatt, state, newState ->
+        //    activity.runOnUiThread {
+        //        try {
+        //            //onUpdateConnectionState?.updateState(state, gatt.connect(), newState)
+        //            if (state != BluetoothGatt.GATT_SUCCESS) {
+        //                mConnectState = BluetoothReader.STATE_DISCONNECTED
+        //                if (newState == BluetoothReader.STATE_CONNECTED) {
+        //                    Log.e("Gatt Callback", "newState is BluetoothReader.STATE_CONNECTED")
+        //                } else if (newState == BluetoothReader.STATE_DISCONNECTED) {
+        //                    Log.e("Gatt Callback", "newState is BluetoothReader.STATE_DISCONNECTED")
+        //                    cardConnectionStateNotifier.updateState(newState, channel)
+        //                }
+        //                reset()
+        //                isReadingBluetoothCard = false
+        //                isReadingBluetoothCard = false
+        //                isCardInserted = false
+        //                bluetoothReaderIsPowered = false
+        //                isFinishedReadingBluetoothCard = true
+        //            }
+        //            // TODO: 
+        //            //cardConnectionStateNotifier.updateState(newState, channel)
+        //            if (newState == BluetoothProfile.STATE_CONNECTED) {
+        //                Log.e("Gatt Callback", "newState is BluetoothProfile.STATE_CONNECTED")
+        //                if (mBluetoothReaderManager != null) {
+        //                    Log.e("Gatt Callback", "mBluetoothReaderManager is NOT null")
+        //                    mBluetoothReaderManager?.detectReader(
+        //                        gatt, mGattCallback
+        //                    )
+        //                }
+        //            } 
+        //            else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+        //                Log.e("Gatt Callback", "newState is BluetoothProfile.STATE_DISCONNECTED")
+        //                mBluetoothReader = null
+        //                if (bluetoothGatt != null) {
+        //                    bluetoothGatt!!.close()
+        //                    bluetoothGatt = null
+        //                }
+        //                //cardConnectionStateNotifier.updateState(newState, channel)
 
-                    if (state != BluetoothGatt.GATT_SUCCESS) {
-                        mConnectState = BluetoothReader.STATE_DISCONNECTED
-                        if (newState == BluetoothReader.STATE_CONNECTED) {
-                            Log.e("Gatt Callback", "newState is BluetoothReader.STATE_CONNECTED")
-                        } else if (newState == BluetoothReader.STATE_DISCONNECTED) {
-                            Log.e("Gatt Callback", "newState is BluetoothReader.STATE_DISCONNECTED")
-                            cardConnectionStateNotifier.updateState(newState, channel)
-                        }
-                        reset()
-                        isReadingBluetoothCard = false
-                        isReadingBluetoothCard = false
-                        isCardInserted = false
-                        bluetoothReaderIsPowered = false
-                        isFinishedReadingBluetoothCard = true
-                    }
-                    cardConnectionStateNotifier.updateState(newState, channel)
-                    if (newState == BluetoothProfile.STATE_CONNECTED) {
-                        if (mBluetoothReaderManager != null) {
-                            mBluetoothReaderManager?.detectReader(
-                                gatt, mGattCallback
-                            )
-                        }
-                    } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                        mBluetoothReader = null
-                        if (mBluetoothGatt != null) {
-                            mBluetoothGatt!!.close()
-                            mBluetoothGatt = null
-                        }
-                        cardConnectionStateNotifier.updateState(newState, channel)
+        //            }
+        //        } catch (e: Exception) {
+        //            Log.e("GATT_ERROR", e.message.toString())
+        //            throw e
+        //        }
+        //    }
+        //}
 
-                    }
-                } catch (e: Exception) {
-                    Log.e("GATT_ERROR", e.message.toString())
-                    throw e
-                }
+        //mBluetoothReaderManager?.setOnReaderDetectionListener { reader ->
+        //    smartCardInitializer.initCardReader(reader)
+        //    when (reader) {
+        //        is Acr3901us1Reader -> {
+        //            Log.e("DeviceFound", "Used + ACR3901U-S1Reader")
+        //        }
+        //        is Acr1255uj1Reader -> {
+        //            Log.e("DeviceFound", "Used + Acr1255uj1Reader")
+        //        }
+        //        else -> {
+        //            disconnectReader()
+        //        }
+        //    }
+        //    if (!isFinishedReadingBluetoothCard) {
+        //        mBluetoothReader = reader
+        //        setListeners(activity)
+        //        activateReader()
+        //    }
+        //}
+        gattCallback.setReaderDetectionListener()
+        connectReader(device, activity, gattCallback)
+
+    }
+
+    fun disconnectReader() {
+        Log.e("disconnectReader", "disconecting Reader")
+        if (bluetoothGatt == null) {
+            Log.e("disconnectReader", "bluetoothGatt is NULL")
+            bluetoothIsReadingCard = false
+            isReadingBluetoothCard = false
+            return
         }
+        Log.e("disconnectReader", "bluetoothGatt disconnect")
+        bluetoothGatt?.disconnect()
+        bluetoothIsReadingCard = false
+        isReadingBluetoothCard = false
+    }
 
-        mBluetoothReaderManager?.setOnReaderDetectionListener { reader ->
-            smartCardInitializer.initCardReader(reader)
-            when (reader) {
-                is Acr3901us1Reader -> {
-                    Log.e("DeviceFound", "Used + ACR3901U-S1Reader")
-                }
-                is Acr1255uj1Reader -> {
-                    Log.e("DeviceFound", "Used + Acr1255uj1Reader")
-                }
-                else -> {
-                    disconnectReader()
-                }
-            }
-            if (!isFinishedReadingBluetoothCard) {
-                mBluetoothReader = reader
-                setListeners(activity)
-                activateReader()
-            }
+    // PRIVATE
+    private fun connectReader(
+        device: BluetoothDevice,
+        activity: Activity,
+        gattCallback: FlutterACSCardReaderBluetoothReaderGattCallback
+        ) {
+
+        Log.e("connectReader", "connecting to Reader")
+
+        if (device == null) {
+            Log.w("device", "Device not found. Unable to connect.")
+            // TODO: Return the information to the Dart code
+            return
         }
-
-        connectReader(device, activity)
-
-        // TODO: Return the actual card Data
-        val data = "SmartCard data"
-        return data
+        Log.e("connectReader", "Start GAT connect")
+        bluetoothGatt = device.connectGatt(activity.applicationContext, false, gattCallback)
     }
 
     private fun activateReader() {
@@ -237,51 +258,6 @@ class SmartCardReader
             Log.e("mBluetoothReader", "Notification Acr1255uj1Reader")
             (mBluetoothReader as? Acr1255uj1Reader)?.enableNotification(true)
         }
-    }
-
-    private fun disconnectReader() {
-        Log.e("disconnectReader", "disconecting Reader")
-        if (mBluetoothGatt == null) {
-            Log.e("disconnectReader", "mBluetoothGatt is NULL")
-            bluetoothIsReadingCard = false
-            isReadingBluetoothCard = false
-            return
-        }
-        Log.e("disconnectReader", "mBluetoothGatt disconnect")
-        mBluetoothGatt?.disconnect()
-        bluetoothIsReadingCard = false
-        isReadingBluetoothCard = false
-    }
-
-    private fun connectReader(device: BluetoothDevice, activity: Activity) {
-        Log.e("connectReader", "connecting to Reader")
-
-        val bluetoothManager =
-            activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-
-        if (bluetoothManager == null) {
-            Log.e("connectReader", "bluetoothManager is NULL")
-            return
-        }
-        val bluetoothAdapter = bluetoothManager.getAdapter()
-        if (bluetoothAdapter == null) {
-            Log.e("connectReader", "bluetoothAdapter is NULL")
-            return
-        }
-        
-        if (mBluetoothGatt != null) {
-            Log.e("mBluetoothGatt", "Clear old GATT connection")
-            mBluetoothGatt?.disconnect()
-            mBluetoothGatt?.close()
-            mBluetoothGatt = null
-        }
-        val device = bluetoothAdapter.getRemoteDevice(device.address)
-        if (device == null) {
-            Log.w("device", "Device not found. Unable to connect.")
-            return
-        }
-        Log.e("connectReader", "Start GAT conect")
-        mBluetoothGatt = device.connectGatt(activity.applicationContext, false, mGattCallback)
     }
 
     private fun reset() {
@@ -334,7 +310,7 @@ class SmartCardReader
         if (masterKey != null && masterKey.isNotEmpty()) {
 
             if (mBluetoothReader != null && mBluetoothReader?.authenticate(masterKey)!!) {
-                Log.e("authenticate", "Tryig to Autheticate user")
+                Log.e("authenticate", "Trying to Authenticate user")
                 //onUpdateReaderView?.onUpadateMAJUI("LIB_Jumelage", "gsAuthentificationEncours", 1)
             }
 
@@ -342,46 +318,11 @@ class SmartCardReader
         return isAuthenticated
     }
 
-    private fun initCardReader(reader: BluetoothReader) {
-        if (reader is Acr3901us1Reader) {
-            /* The connected reader is ACR3901U-S1 reader. */
-            if (FINAL_MASTER_KEY == null) {
-                FINAL_MASTER_KEY = DEFAULT_3901_MASTER_KEY
-            }
-            if (FINAL_APDU_COMMAND == null) {
-                FINAL_APDU_COMMAND = DEFAULT_3901_APDU_COMMAND
-            }
-            if (FINAL_ESCAPE_COMMAND == null) {
-                FINAL_ESCAPE_COMMAND = DEFAULT_3901_ESCAPE_COMMAND
-            }
-        } else if (reader is Acr1255uj1Reader) {
-            /* The connected reader is ACR1255U-J1 reader. */
-            if (FINAL_MASTER_KEY?.length == 0) {
-                try {
-                    val charset = Charsets.UTF_8
-                    FINAL_MASTER_KEY = toHexString(
-                        DEFAULT_1255_MASTER_KEY
-                            .toByteArray(charset)
-                    )
-                } catch (e: UnsupportedEncodingException) {
-                    e.printStackTrace()
-                }
-            }
-            if (FINAL_APDU_COMMAND?.length == 0) {
-                FINAL_APDU_COMMAND = DEFAULT_1255_APDU_COMMAND
-            }
-            if (FINAL_ESCAPE_COMMAND?.length == 0) {
-                FINAL_ESCAPE_COMMAND = DEFAULT_1255_ESCAPE_COMMAND
-            }
-        }
-        Log.e(TAG, "FINAL_MASTER_KEY: $FINAL_MASTER_KEY")
-    }
-
     private fun getCardStatus(cardStatus: Int) {
         when (cardStatus) {
             BluetoothReader.CARD_STATUS_ABSENT -> {
 
-                Log.e("TAG", "CARD_STATUS_ABSENT")
+                Log.e("getCardStatus", "CARD_STATUS_ABSENT")
                 //onUpdateReaderView?.onUpadateMAJUI("LIB_CardStatut", " gsCARD_STATUS_ABSENT", 1)
                 // TODO: Envoyer au code Dart que la carte est ABSENTE
                 finalCardStatus = FinalCardStatus.Absent
@@ -405,11 +346,11 @@ class SmartCardReader
             }
             BluetoothReader.CARD_STATUS_PRESENT -> {
                 if (isFinishedReadingBluetoothCard) {
-                    Log.e("TAG", "" + isReadingBluetoothCard + "" + isFinishedReadingBluetoothCard)
+                    Log.e("getCardStatus", "isReadingBluetoothCard: " + isReadingBluetoothCard + " isFinishedReadingBluetoothCard: " + isFinishedReadingBluetoothCard)
                     return
                 }
-                Log.e("TAG", "CARD_STATUS_PRESENT")
-                mBluetoothReader?.let { initCardReader(it) }
+                Log.e("getCardStatus", "CARD_STATUS_PRESENT")
+                mBluetoothReader?.let { smartCardInitializer.initCardReader(it) }
                 activateReader()
                 // TODO: Notify Update to the Dart code 
                 //onUpdateReaderView?.onUpadateMAJUI("LIB_CardStatut", " gsCARD_STATUS_PRESENT", 1)
@@ -427,15 +368,15 @@ class SmartCardReader
                 }
                 powerOnCard()
                 if (!mBluetoothReader?.powerOnCard()!!) {
-                    Log.e("TAG", "CARD_STATUS_PRESENT 2")
+                    Log.e("getCardStatus", "CARD_STATUS_PRESENT 2")
                     //onUpdateReaderView?.onUpadateMAJUI("LIB_Messages", " gsCardNotReady", 1)
                     bluetoothReaderIsPowered = false
                 } else {
-                    Log.e("TAG", "CARD_STATUS_PRESENT 3")
+                    Log.e("getCardStatus", "CARD_STATUS_PRESENT 3")
                     bluetoothReaderIsPowered = true
                 }
                 if (!mBluetoothReader?.getCardStatus()!!) {
-                    Log.e("TAG", "CARD_STATUS_PRESENT 4")
+                    Log.e("getCardStatus", "CARD_STATUS_PRESENT 4")
                     //onUpdateReaderView?.onUpadateMAJUI("LIB_Messages", " gsCardNotReady", 1)
                 }
 
@@ -445,10 +386,10 @@ class SmartCardReader
                 finalCardStatus = FinalCardStatus.Active
                 isCardInserted = true
                 bluetoothReaderIsPowered = true
-                Log.e("TAG", "CARD_STATUS_POWERED")
+                Log.e("getCardStatus", "CARD_STATUS_POWERED")
             }
             BluetoothReader.CARD_STATUS_POWER_SAVING_MODE -> {
-                Log.e("TAG", "CARD_STATUS_POWER_SAVING_MODE")
+                Log.e("getCardStatus", "CARD_STATUS_POWER_SAVING_MODE")
                 //onUpdateReaderView?.onUpadateMAJUI(
                 //    "LIB_CardStatut",
                 //    " gsCARD_STATUS_POWER_SAVING_MODE",
@@ -472,7 +413,7 @@ class SmartCardReader
                 //)
             }
             else -> {
-                Log.e("TAG", "Card status is unknown")
+                Log.e("getCardStatus", "Card status is unknown")
                 //onUpdateReaderView?.onUpadateMAJUI("LIB_CardStatut", " gsCARD_STATUS_UKNOWN", 1)
                 finalCardStatus = FinalCardStatus.Unknown
                 //onUpdateReaderView?.onchangeViewTo(3)
@@ -686,12 +627,12 @@ class SmartCardReader
         if (finalCardStatus != FinalCardStatus.Active) {
             bluetoothCardReadEnd = false
             powerOffCard()
-            if (mBluetoothGatt != null) {
-                mBluetoothGatt?.disconnect()
-                mBluetoothGatt?.close()
-                mBluetoothGatt = null
+            if (bluetoothGatt != null) {
+                bluetoothGatt?.disconnect()
+                bluetoothGatt?.close()
+                bluetoothGatt = null
             }
-            connectReader(device, activity)
+            connectReader(device, activity, gattCallback)
         }
 
         /* Retrieve APDU command from edit box. */
@@ -757,7 +698,7 @@ class SmartCardReader
         //onUploadFile?.onUploadFile(create_xml, sAcsCardRenamed)
         //// disconnectReader()
         //// mBluetoothReader?.powerOffCard()
-        ////  mBluetoothGatt?.disconnect()
+        ////  bluetoothGatt?.disconnect()
         ////  clicEnvoyerXml();
 
     }
@@ -842,7 +783,6 @@ class SmartCardReader
         val mContext = activity.applicationContext
 
         mBluetoothReader?.setOnAuthenticationCompleteListener { bluetoothReader, errorCode ->
-
             if (errorCode == BluetoothReader.ERROR_SUCCESS) {
                 isAuthenticated = true
                 powerOnCard()
@@ -850,7 +790,7 @@ class SmartCardReader
                 Log.e("authenticate", "Success")
             } else {
                 authenticate()
-                Log.e("authenticate", "Fail : " + errorCode)
+                Log.e("authenticate", "Error code : " + errorCode)
                 if(!authenticationSuccess){
                     Log.e("authenticate", "Failed to authenticate (authenticationSuccess == false) : " + errorCode)
                 }
@@ -957,213 +897,206 @@ class SmartCardReader
 
         mBluetoothReader?.setOnResponseApduAvailableListener { bluetoothReader, apdu, errorCode ->
 
-            activity.runOnUiThread {
-                // Card status check
-                if (finalCardStatus != FinalCardStatus.Active && mBluetoothReader == null) {
-                    return@runOnUiThread
-                }
+            // Card status check
+            if (finalCardStatus != FinalCardStatus.Active && mBluetoothReader == null) {
+                
+            }
 
-                try {
-                    Log.e("Commande", "" + listSelect?.get(nSelect)?.commande)
-                    sResponse = getAPDUResponseString(apdu, errorCode)
-                    isReadingBluetoothCard = true
-                    val sReponseWithoutWhiteSpaces = sResponse.replace("\\s+".toRegex(), "")
-                    val result = StringUtils.convertHexToString(sReponseWithoutWhiteSpaces)
+            try {
+                Log.e("Commande", "" + listSelect?.get(nSelect)?.commande)
+                sResponse = getAPDUResponseString(apdu, errorCode)
+                isReadingBluetoothCard = true
+                val sReponseWithoutWhiteSpaces = sResponse.replace("\\s+".toRegex(), "")
+                val result = StringUtils.convertHexToString(sReponseWithoutWhiteSpaces)
 
-                    if (!end) {
-                        if (listSelect?.get(nSelect)?.nom?.contains("certificate")!! && listSelect?.get(
-                                nSelect
-                            )!!.tG2
-                        ) {
-                            if (nRead == 0) {
-                                TG2CertificateSize = (sResponse.length / 3) - 2
-                                if (sResponse.length >= 768) { // size > 256 (256*3char = 768char)
-                                    isRead = true
-                                    listRead.add("00 B0 00 FE 00")
-                                } else {
-                                    listSelect?.get(nSelect)!!.taille = TG2CertificateSize
-                                }
-                                if (listSelect?.get(nSelect)!!.commande == EF_CARDSIGNCERTIFICATE) {
-                                    sReponseCardSignCertif = sResponse
-                                }
-                            } else if (nRead == 1) {
-                                TG2CertificateSize += (sResponse.length / 3) - 2
+                if (!end) {
+                    if (listSelect?.get(nSelect)?.nom?.contains("certificate")!! && listSelect?.get(
+                            nSelect
+                        )!!.tG2
+                    ) {
+                        if (nRead == 0) {
+                            TG2CertificateSize = (sResponse.length / 3) - 2
+                            if (sResponse.length >= 768) { // size > 256 (256*3char = 768char)
+                                isRead = true
+                                listRead.add("00 B0 00 FE 00")
+                            } else {
                                 listSelect?.get(nSelect)!!.taille = TG2CertificateSize
-                                if (listSelect?.get(nSelect)!!.commande == EF_CARDSIGNCERTIFICATE) {
-                                    sReponseCardSignCertif += " $sResponse"
-                                }
+                            }
+                            if (listSelect?.get(nSelect)!!.commande == EF_CARDSIGNCERTIFICATE) {
+                                sReponseCardSignCertif = sResponse
+                            }
+                        } else if (nRead == 1) {
+                            TG2CertificateSize += (sResponse.length / 3) - 2
+                            listSelect?.get(nSelect)!!.taille = TG2CertificateSize
+                            if (listSelect?.get(nSelect)!!.commande == EF_CARDSIGNCERTIFICATE) {
+                                sReponseCardSignCertif += " $sResponse"
+                            }
+                        }
+                    }
+
+                    if (nSelect == 0) {
+                        if (sResponse.trim() == "90 00") {
+                            IS_TG2 = true
+                            listSelect?.addAll(setListeTG2())
+                        } else {
+                            IS_TG2 = false
+                        }
+                        selectSize = listSelect!!.size - 1
+                        nSelect++
+                        nRead = -1
+                        nTG1 = 0
+                        nTG2 = 0
+                        TIMESTAMP = 0
+                        isRead = false
+                        sendAPDUCommandToTransmit(listSelect?.get(nSelect)!!.commande)
+
+                        Log.e("ApduAvailable", "Comm1 : ${listSelect?.get(nSelect)?.commande}")
+                    } else {
+                        // Default
+                        if (sResponse.trim().endsWith("90 00")) {
+                            sC1BContent = sResponse.substring(
+                                0,
+                                sResponse.length - 6
+                            ) // Delete "90 00" at the end of sResponse
+                            if (sC1BContent.replace("\\s", "").isNotEmpty()) {
+                                /* La commande en cours est une signature */
+                                isCmdSignature = listRead[nRead].startsWith("00 2A 9E 9A")
+                                /* Commad is runnig and needs a header */
+                                needsHeader =
+                                    if (!listSelect?.get(nSelect)!!.signature && nRead == 0) { // read header
+                                        true
+                                    } else if (listSelect?.get(nSelect)!!.signature && nRead == 1) { // read  header
+                                        true
+                                    } else isCmdSignature
+                                /* Build buffer
+                                MathUtils.sHexa is used to create the C1B file */
+                                MathUtils.setHexa(
+                                    listSelect?.get(nSelect)!!,
+                                    isCmdSignature,
+                                    needsHeader,
+                                    sC1BContent
+                                )
+                            }
+                        } else {
+                            if (listSelect?.get(nSelect)!!.commande != MF) {
+                                throw  Exception("Erreur de lecture de la carte")
                             }
                         }
 
-                        if (nSelect == 0) {
-                            if (sResponse.trim() == "90 00") {
-                                IS_TG2 = true
-                                listSelect?.addAll(setListeTG2())
-                            } else {
-                                IS_TG2 = false
-                            }
-                            selectSize = listSelect!!.size - 1
-                            nSelect++
-                            nRead = -1
-                            nTG1 = 0
-                            nTG2 = 0
-                            TIMESTAMP = 0
-                            isRead = false
-                            sendAPDUCommandToTransmit(listSelect?.get(nSelect)!!.commande)
-
-                            Log.e("ApduAvailable", "Comm1 : ${listSelect?.get(nSelect)?.commande}")
-                        } else {
-                            // Default
-                            if (sResponse.trim().endsWith("90 00")) {
-                                sC1BContent = sResponse.substring(
-                                    0,
-                                    sResponse.length - 6
-                                ) // Delete "90 00" at the end of sResponse
-                                if (sC1BContent.replace("\\s", "").isNotEmpty()) {
-                                    /* La commande en cours est une signature */
-                                    isCmdSignature = listRead[nRead].startsWith("00 2A 9E 9A")
-                                    /* Commad is runnig and needs a header */
-                                    needsHeader =
-                                        if (!listSelect?.get(nSelect)!!.signature && nRead == 0) { // read header
-                                            true
-                                        } else if (listSelect?.get(nSelect)!!.signature && nRead == 1) { // read  header
-                                            true
-                                        } else isCmdSignature
-                                    /* Build buffer
-                                    MathUtils.sHexa is used to create the C1B file */
-                                    MathUtils.setHexa(
-                                        listSelect?.get(nSelect)!!,
-                                        isCmdSignature,
-                                        needsHeader,
-                                        sC1BContent
-                                    )
-                                }
-                            } else {
-                                if (listSelect?.get(nSelect)!!.commande != MF) {
-                                    throw  Exception("Erreur de lecture de la carte")
-                                }
-                            }
-
-                            // Reading is finished
-                            if (nSelect == selectSize && nRead == readSize) {
+                        // Reading is finished
+                        if (nSelect == selectSize && nRead == readSize) {
+                            sendAPDUCommandToTransmit(DF_TACHOGRAPH)
+                            sendAPDUCommandToTransmit(EF_CARD_DOWNLOAD)
+                            sendAPDUCommandToTransmit(setUpdate())
+                            if(IS_TG2){
                                 sendAPDUCommandToTransmit(DF_TACHOGRAPH)
+                                sendAPDUCommandToTransmit(MF)
+                                sendAPDUCommandToTransmit(DF_TACHOGRAPH_G2)
                                 sendAPDUCommandToTransmit(EF_CARD_DOWNLOAD)
                                 sendAPDUCommandToTransmit(setUpdate())
-                                if(IS_TG2){
-                                    sendAPDUCommandToTransmit(DF_TACHOGRAPH)
-                                    sendAPDUCommandToTransmit(MF)
-                                    sendAPDUCommandToTransmit(DF_TACHOGRAPH_G2)
-                                    sendAPDUCommandToTransmit(EF_CARD_DOWNLOAD)
-                                    sendAPDUCommandToTransmit(setUpdate())
-
-                                }
-                                libGauge = listSelect?.get(nSelect)!!.getNom() + " : " +
-                                        Integer.toString(nRead + 1) + "/" + Integer.toString(
-                                    readSize + 1
-                                )
-                                //onUpdateReaderView?.onUpadateMessages(
-                                //    "final",
-                                //    libGauge,
-                                //    listSelect!!.size - 1
-                                //)
-                                bluetoothCardReadHasEnded = true
-                                bluetoothIsReadingCard = false
-                                end = true
-                                createC1BFile()
-
-                                return@runOnUiThread
-                            }
-                            //Lecture select suivant + configuration liste Read
-                            if (!isRead) {
-                                if (listSelect?.get(nSelect)!!.commande == EF_CARDSIGNCERTIFICATE) {
-                                    TGUtils.setTG2Signature(sReponseCardSignCertif)
-                                }
-                                nSelect++
-                                nRead = -1
-                                // appelProcedureWL("setJauge", nSelect, selectSize + 1);
-                                libGauge = listSelect?.get(nSelect)!!.nom + " : " +
-                                        Integer.toString(nRead + 1) + "/" + (readSize + 1).toString()
-                                //onUpdateReaderView?.onUpadateMessages(
-                                //    "first",
-                                //    libGauge,
-                                //    listSelect!!.size - 1
-                                //)
-                                listRead.clear()
-
-                                if (listSelect?.get(nSelect)!!.isEF) {
-                                    listRead = TGUtils.setReadCommands(listSelect?.get(nSelect)!!)
-                                }
-                                readSize = listRead.size - 1
-                                isRead = listRead.isNotEmpty() 
-
-                                sendAPDUCommandToTransmit(listSelect?.get(nSelect)!!.commande)
 
                             }
-                            // next read
-                            else {
-                                nRead++
-                                libGauge =
-                                    listSelect?.get(nSelect)!!.nom + " : " + (nRead + 1).toString() + "/" + (readSize + 1).toString()
+                            libGauge = listSelect?.get(nSelect)!!.getNom() + " : " +
+                                    Integer.toString(nRead + 1) + "/" + Integer.toString(
+                                readSize + 1
+                            )
+                            //onUpdateReaderView?.onUpadateMessages(
+                            //    "final",
+                            //    libGauge,
+                            //    listSelect!!.size - 1
+                            //)
+                            bluetoothCardReadHasEnded = true
+                            bluetoothIsReadingCard = false
+                            end = true
+                            createC1BFile()
+                        }
+                        //Lecture select suivant + configuration liste Read
+                        if (!isRead) {
+                            if (listSelect?.get(nSelect)!!.commande == EF_CARDSIGNCERTIFICATE) {
+                                TGUtils.setTG2Signature(sReponseCardSignCertif)
+                            }
+                            nSelect++
+                            nRead = -1
+                            // appelProcedureWL("setJauge", nSelect, selectSize + 1);
+                            libGauge = listSelect?.get(nSelect)!!.nom + " : " +
+                                    Integer.toString(nRead + 1) + "/" + (readSize + 1).toString()
+                            //onUpdateReaderView?.onUpadateMessages(
+                            //    "first",
+                            //    libGauge,
+                            //    listSelect!!.size - 1
+                            //)
+                            listRead.clear()
 
-                                //onUpdateReaderView?.onUpadateMessages(
-                                //    "second",
-                                //    libGauge,
-                                //    listSelect!!.size - 1
-                                //)
+                            if (listSelect?.get(nSelect)!!.isEF) {
+                                listRead = TGUtils.setReadCommands(listSelect?.get(nSelect)!!)
+                            }
+                            readSize = listRead.size - 1
+                            isRead = listRead.isNotEmpty() 
 
-                                if ((listSelect?.get(nSelect)!! == wTG1_APP || listSelect?.get(
-                                        nSelect
-                                    ) == wTG2_APP)
-                                    && nRead == 2
-                                ) {
-                                    calculateEFSize(listSelect?.get(nSelect)!!, sResponse)
+                            sendAPDUCommandToTransmit(listSelect?.get(nSelect)!!.commande)
+
+                        }
+                        // next read
+                        else {
+                            nRead++
+                            libGauge =
+                                listSelect?.get(nSelect)!!.nom + " : " + (nRead + 1).toString() + "/" + (readSize + 1).toString()
+
+                            //onUpdateReaderView?.onUpadateMessages(
+                            //    "second",
+                            //    libGauge,
+                            //    listSelect!!.size - 1
+                            //)
+
+                            if ((listSelect?.get(nSelect)!! == wTG1_APP || listSelect?.get(
+                                    nSelect
+                                ) == wTG2_APP)
+                                && nRead == 2
+                            ) {
+                                calculateEFSize(listSelect?.get(nSelect)!!, sResponse)
+                            }
+                            /* Vérifier la carte conducteur si EF_IDENTIFICATION */
+                            if (listSelect?.get(nSelect)!! == wTG1_ID && nRead == 2) {
+                                sReponse520 = sC1BContent
+                                Log.e("identity", sReponse520)
+                                var sTemp = sReponse520.substring(3)
+
+                                sTemp = StringUtils.getHexString(sTemp, 14)
+                                sTemp = sTemp.replace(" ", "")
+                                val sCardNum = StringUtils.convertHexToString(sTemp)
+                                val numCard = driver.carte
+
+                                Log.e("numCard", "" + numCard)
+                                if (sCardNum != numCard) {
+                                    finalCardStatus = FinalCardStatus.Absent
+                                    //onUpdateReaderView?.onchangeViewTo(12)
                                 }
-                                /* Vérifier la carte conducteur si EF_IDENTIFICATION */
-                                if (listSelect?.get(nSelect)!! == wTG1_ID && nRead == 2) {
-                                    sReponse520 = sC1BContent
-                                    Log.e("identity", sReponse520)
-                                    var sTemp = sReponse520.substring(3)
+                            }
 
-                                    sTemp = StringUtils.getHexString(sTemp, 14)
-                                    sTemp = sTemp.replace(" ", "")
-                                    val sCardNum = StringUtils.convertHexToString(sTemp)
-                                    val numCard = driver.carte
-
-                                    Log.e("numCard", "" + numCard)
-                                    if (sCardNum != numCard) {
-                                        finalCardStatus = FinalCardStatus.Absent
-                                        //onUpdateReaderView?.onchangeViewTo(12)
-                                        return@runOnUiThread
-                                    }
-                                }
-
-                                /* Sed next command to Reader */
-                                if (nRead < readSize) {
-                                    sendAPDUCommandToTransmit(listRead[nRead])
-                                } else {
-                                    isRead = false
-                                    sendAPDUCommandToTransmit(listRead[nRead])
-                                }
+                            /* Sed next command to Reader */
+                            if (nRead < readSize) {
+                                sendAPDUCommandToTransmit(listRead[nRead])
+                            } else {
+                                isRead = false
+                                sendAPDUCommandToTransmit(listRead[nRead])
                             }
                         }
-
                     }
-                } catch (e: Exception) {
-                    finalATR = ""
-                    isCardInserted = false
-                    bluetoothReaderIsPowered = false
-                    bluetoothIsReadingCard = false
-                    isReadingBluetoothCard = false
-                    //onUpdateReaderView?.onchangeViewTo(7)
-                    Log.e("ERROR", "" + e.localizedMessage)
+
                 }
+            } catch (e: Exception) {
+                finalATR = ""
+                isCardInserted = false
+                bluetoothReaderIsPowered = false
+                bluetoothIsReadingCard = false
+                isReadingBluetoothCard = false
+                //onUpdateReaderView?.onchangeViewTo(7)
+                Log.e("ERROR", "" + e.localizedMessage)
             }
         }
         // Wait for escape command response.
         mBluetoothReader?.setOnEscapeResponseAvailableListener { bluetoothReader, response, errorCode ->
-            activity.runOnUiThread {
-                Log.e("setOnEscapeResponse", "Other traitement")
-            }
+            Log.e("setOnEscapeResponse", response.toString() + " // Error code: " + errorCode)
         }
     }
 }

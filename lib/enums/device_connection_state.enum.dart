@@ -1,5 +1,5 @@
 enum DeviceConnectionState {
-  searching,
-  stopped,
+  connected,
+  disconnected,
   error,
 }

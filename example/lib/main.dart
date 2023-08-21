@@ -15,9 +15,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  StreamSubscription<DeviceSearchState?>? _deviceSearchStateStream;
   StreamSubscription<DeviceConnectionState?>? _deviceConnectionStateStream;
   StreamSubscription<BluetoothDevice?>? _deviceFoundEventStream;
   String _deviceActivity = "";
+  String _deviceConnectionState = "";
   String _deviceName = "";
   String _locationGrantedStatus = "UNKNOWN";
   final String _cardActivity = "";
@@ -32,8 +34,9 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     super.dispose();
-    _deviceConnectionStateStream?.cancel();
+    _deviceSearchStateStream?.cancel();
     _deviceFoundEventStream?.cancel();
+    _deviceConnectionStateStream?.cancel();
   }
 
   void _startScan() {
@@ -44,25 +47,49 @@ class _MyAppState extends State<MyApp> {
     FlutterAcsCardReader.stopScanningSmartCardDevices();
   }
 
-  void _readCard(BluetoothDevice device) {
-    FlutterAcsCardReader.readSmartCard(device).then(
-      (value) {
-        print(value);
+  void _readCard(BluetoothDevice device) async {
+    User user = User.fromJson({
+      "conducteur": {
+        "nom": "HORNER",
+        "prenom": "Benjamin",
+        "tel": "",
+        "email": "b.e.horner@gmail.com",
+        "carte": "10000000074810"
       },
+      "agence": {"ID": 1, "emails": "ventes@sogestmatic.com"},
+      "estConnecte": true
+    });
+    await FlutterAcsCardReader.readSmartCard(
+      device,
+      user: user,
     );
   }
 
   void _registerListeners() {
-    // Start listening to events
     FlutterAcsCardReader.startListeningToEvents();
 
-    // Listen to device connection status
+    // Listen to device search status
+    _deviceSearchStateStream = FlutterAcsCardReader.deviceSearchStateStream
+        .listen((DeviceSearchState state) {
+      setState(() {
+        _isScanning = state == DeviceSearchState.searching ? true : false;
+        _deviceActivity = state.toString();
+      });
+    });
+
+    // Listen to Device connection status
     _deviceConnectionStateStream = FlutterAcsCardReader
         .deviceConnectionStateStream
         .listen((DeviceConnectionState state) {
       setState(() {
-        _isScanning = state == DeviceConnectionState.searching ? true : false;
-        _deviceActivity = state.toString();
+        _deviceConnectionState = state.toString();
+      });
+    });
+
+    // Listen to Location Status
+    FlutterAcsCardReader.bluetoothStatusStream.listen((BluetoothStatus status) {
+      setState(() {
+        _locationGrantedStatus = status.toString();
       });
     });
 
@@ -73,13 +100,6 @@ class _MyAppState extends State<MyApp> {
         _deviceName = device.localName;
       });
       _readCard(device);
-    });
-
-    // Listen to Location Status
-    FlutterAcsCardReader.bluetoothStatusStream.listen((BluetoothStatus status) {
-      setState(() {
-        _locationGrantedStatus = status.toString();
-      });
     });
   }
 
@@ -98,7 +118,11 @@ class _MyAppState extends State<MyApp> {
               const SizedBox(
                 height: 8,
               ),
-              Text("Device state: $_deviceActivity"),
+              Text("Device search state: $_deviceActivity"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text("Device connection state: $_deviceConnectionState"),
               const SizedBox(
                 height: 8,
               ),
