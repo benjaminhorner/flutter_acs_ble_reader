@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  plugin_platform_interface: ^2.0.2
-  flutter_blue_plus: ^1.12.7
+  plugin_platform_interface: ^2.1.6
+  flutter_blue_plus: ^1.14.23
 
 dev_dependencies:
   flutter_test:
