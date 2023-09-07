@@ -21,7 +21,7 @@ class _MyAppState extends State<MyApp> {
   String _deviceActivity = "";
   String _deviceConnectionState = "";
   String _deviceName = "";
-  String _locationGrantedStatus = "UNKNOWN";
+  BluetoothAdapterState _bluetoothState = BluetoothAdapterState.unknown;
   final String _cardActivity = "";
   bool _isScanning = false;
 
@@ -87,9 +87,10 @@ class _MyAppState extends State<MyApp> {
     });
 
     // Listen to Location Status
-    FlutterAcsCardReader.bluetoothStatusStream.listen((BluetoothStatus status) {
+    FlutterAcsCardReader.bluetoothStatusStream
+        .listen((BluetoothAdapterState state) {
       setState(() {
-        _locationGrantedStatus = status.toString();
+        _bluetoothState = state;
       });
     });
 
@@ -114,7 +115,7 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Location status: $_locationGrantedStatus"),
+              Text("Location status: $_bluetoothState"),
               const SizedBox(
                 height: 8,
               ),

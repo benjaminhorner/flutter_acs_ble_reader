@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 // Import
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_acs_card_reader/enums/bluetooth_support.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 import 'enums/device_search_state.enum.dart';
 import 'models/user.model.dart';
@@ -13,7 +13,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 export 'enums/card_connection_state.enum.dart';
 export 'enums/device_search_state.enum.dart';
 export 'package:flutter_blue_plus/flutter_blue_plus.dart';
-export 'package:flutter_acs_card_reader/enums/bluetooth_support.enum.dart';
 export 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 export 'models/user.model.dart';
 
@@ -32,8 +31,9 @@ class FlutterAcsCardReader {
       StreamController<DeviceConnectionState>.broadcast();
   static final StreamController<BluetoothDevice> _deviceFoundEventController =
       StreamController<BluetoothDevice>.broadcast();
-  static final StreamController<BluetoothStatus> _bluetoothStatusController =
-      StreamController<BluetoothStatus>.broadcast();
+  static final StreamController<BluetoothAdapterState>
+      _bluetoothStatusController =
+      StreamController<BluetoothAdapterState>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -42,7 +42,7 @@ class FlutterAcsCardReader {
       _deviceConnectionStateController.stream;
   static Stream<BluetoothDevice> get deviceFoundEventStream =>
       _deviceFoundEventController.stream;
-  static Stream<BluetoothStatus> get bluetoothStatusStream =>
+  static Stream<BluetoothAdapterState> get bluetoothStatusStream =>
       _bluetoothStatusController.stream;
 
   /// Public
@@ -120,25 +120,35 @@ class FlutterAcsCardReader {
   /// Private
   ///
   static Future<void> _scanForDevices(int timeoutSeconds) async {
-    scanResultsSubscription =
-        FlutterBluePlus.scanResults.listen((results) async {
-      for (ScanResult r in results) {
-        if (r.device.localName.startsWith("ACR")) {
-          _deviceFoundEventController.add(r.device);
-          await stopScanningSmartCardDevices();
-        }
-        debugPrint('${r.device.localName} found! rssi: ${r.rssi}');
-      }
-    });
-    FlutterBluePlus.startScan(timeout: Duration(seconds: timeoutSeconds));
-  }
+    FlutterBluePlus.setLogLevel(LogLevel.verbose);
 
-  static Future<void> _stopGattConnection() async {
-    try {
-      await _channel.invokeMethod('stopGattConnection');
-    } catch (e) {
-      throw Exception('Error stopping GATT Connection: $e');
+    /// check adapter availability
+    if (await FlutterBluePlus.isAvailable == false) {
+      debugPrint("Bluetooth not supported by this device");
+      _bluetoothStatusController.add(BluetoothAdapterState.unavailable);
+      return;
     }
+
+    /// turn on bluetooth if we can (Android only)
+    /// for iOS, the user controls bluetooth enable/disable
+    if (Platform.isAndroid) {
+      await FlutterBluePlus.turnOn();
+    }
+
+    /// wait for bluetooth to be on & start searching for devices
+    /// note: for iOS the initial state is typically BluetoothAdapterState.unknown
+    /// note: if you have permissions issues you will get stuck at BluetoothAdapterState.unauthorized
+    await FlutterBluePlus.adapterState
+        .map((state) {
+          debugPrint(state.toString());
+          return state;
+        })
+        .where((s) => s == BluetoothAdapterState.on)
+        .first;
+
+    /// Launch BLE scan
+    ///
+    // TODO: Launch the scan
   }
 
   static Map<String, dynamic> _deviceToMap(BluetoothDevice device) {

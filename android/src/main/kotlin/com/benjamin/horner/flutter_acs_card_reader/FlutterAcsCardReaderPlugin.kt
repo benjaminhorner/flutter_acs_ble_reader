@@ -1,14 +1,18 @@
 package com.benjamin.horner.flutter_acs_card_reader
 
+/// Local
 import com.benjamin.horner.flutter_acs_card_reader.SmartCardReader
 import com.benjamin.horner.flutter_acs_card_reader.Driver
 
+/// Android
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.app.Activity
 import android.util.Log
 import androidx.annotation.NonNull
+
+/// Flutter 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -61,9 +65,6 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
                     result.error("INVALID_DEVICE", "Invalid device or driver parameter", null)
                 }
             }
-            "stopGattConnection" -> {
-                stopGattConnection()
-            }
             else -> {
                 result.notImplemented()
             }
@@ -87,14 +88,10 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
                 tel = phone
             )
             val bluetoothDevice = bluetoothAdapter.getRemoteDevice(address)
-            smartCardReader.readSmartCard(bluetoothDevice, activity, context, driver)
+            // smartCardReader.readSmartCard(bluetoothDevice, activity, context, driver)
         } else {
             result.error("INVALID_DEVICE", "Invalid device address", null)
         }
-    }
-
-    private fun stopGattConnection() {
-        smartCardReader.disconnectReader()
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
