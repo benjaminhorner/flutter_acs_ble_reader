@@ -15,15 +15,28 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final User user = User.fromJson(
+    {
+      "conducteur": {
+        "nom": "HORNER",
+        "prenom": "Benjamin",
+        "tel": "",
+        "email": "b.e.horner@gmail.com",
+        "carte": "10000000074810"
+      },
+      "agence": {"ID": 1, "emails": "ventes@sogestmatic.com"},
+      "estConnecte": true
+    },
+  );
   StreamSubscription<DeviceSearchState?>? _deviceSearchStateStream;
   StreamSubscription<DeviceConnectionState?>? _deviceConnectionStateStream;
   StreamSubscription<BluetoothDevice?>? _deviceFoundEventStream;
-  String _deviceActivity = "";
-  String _deviceConnectionState = "";
-  String _deviceName = "";
   BluetoothAdapterState _bluetoothState = BluetoothAdapterState.unknown;
-  final String _cardActivity = "";
+  DeviceSearchState _deviceActivity = DeviceSearchState.stopped;
+  DeviceConnectionState _deviceConnectionState = DeviceConnectionState.pending;
+  String _deviceName = "";
   bool _isScanning = false;
+  final String _cardActivity = "";
 
   @override
   void initState() {
@@ -40,29 +53,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _startScan() {
-    FlutterAcsCardReader.scanSmartCardDevices();
+    FlutterAcsCardReader.scanSmartCardDevices(user);
   }
 
   void _stopScan() {
     FlutterAcsCardReader.stopScanningSmartCardDevices();
-  }
-
-  void _readCard(BluetoothDevice device) async {
-    User user = User.fromJson({
-      "conducteur": {
-        "nom": "HORNER",
-        "prenom": "Benjamin",
-        "tel": "",
-        "email": "b.e.horner@gmail.com",
-        "carte": "10000000074810"
-      },
-      "agence": {"ID": 1, "emails": "ventes@sogestmatic.com"},
-      "estConnecte": true
-    });
-    await FlutterAcsCardReader.readSmartCard(
-      device,
-      user: user,
-    );
   }
 
   void _registerListeners() {
@@ -73,7 +68,7 @@ class _MyAppState extends State<MyApp> {
         .listen((DeviceSearchState state) {
       setState(() {
         _isScanning = state == DeviceSearchState.searching ? true : false;
-        _deviceActivity = state.toString();
+        _deviceActivity = state;
       });
     });
 
@@ -82,7 +77,7 @@ class _MyAppState extends State<MyApp> {
         .deviceConnectionStateStream
         .listen((DeviceConnectionState state) {
       setState(() {
-        _deviceConnectionState = state.toString();
+        _deviceConnectionState = state;
       });
     });
 
@@ -100,7 +95,6 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _deviceName = device.localName;
       });
-      _readCard(device);
     });
   }
 

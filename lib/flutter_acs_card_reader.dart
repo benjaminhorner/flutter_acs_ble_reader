@@ -4,6 +4,7 @@ import 'dart:io';
 // Import
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_acs_card_reader/enums/card_terminal_type.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 import 'enums/device_search_state.enum.dart';
 import 'models/user.model.dart';
@@ -47,10 +48,11 @@ class FlutterAcsCardReader {
 
   /// Public
   ///
-  static Future<void> scanSmartCardDevices({int timeoutSeconds = 10}) async {
+  static Future<void> scanSmartCardDevices(User user,
+      {int timeoutSeconds = 10}) async {
     try {
       _deviceSearchStateController.add(DeviceSearchState.searching);
-      await _scanForDevices(timeoutSeconds);
+      await _scanForDevices(timeoutSeconds, user: user);
     } on PlatformException catch (e) {
       throw Exception('Failed to scan smart card devices: ${e.message}');
     }
@@ -66,20 +68,6 @@ class FlutterAcsCardReader {
     }
   }
 
-  static Future<void> readSmartCard(BluetoothDevice device,
-      {required User user}) async {
-    try {
-      Map<String, dynamic> mappedDevice = _deviceToMap(device);
-      Map<String, dynamic> mappedUser = _userToMap(user);
-      await _channel.invokeMethod(
-        'readSmartCard',
-        {'device': mappedDevice, "driver": mappedUser},
-      );
-    } catch (e) {
-      throw Exception('Error reading smart card: $e');
-    }
-  }
-
   /// Start Streams
   ///
   static void startListeningToEvents() {
@@ -88,19 +76,24 @@ class FlutterAcsCardReader {
         try {
           final dynamic state = call.arguments;
           debugPrint("onDeviceConnectionStatusEvent is $state");
-          _deviceConnectionStateController.add(_deviceConnectionState(state));
-        } catch (e) {
-          rethrow;
-        }
-      } else if (call.method == 'onDeviceConnectionStatusEvent') {
-        try {
-          final dynamic state = call.arguments;
-          debugPrint("onReaderDetectionStatusEvent is $state");
-          _deviceConnectionStateController.add(_deviceConnectionState(state));
+          DeviceConnectionState connectionState = _deviceConnectionState(state);
+          _deviceConnectionStateController.add(connectionState);
+          if (connectionState == DeviceConnectionState.error) {
+            stopScanningSmartCardDevices();
+          }
         } catch (e) {
           rethrow;
         }
       }
+      // else if (call.method == 'onDeviceConnectionStatusEvent') {
+      //   try {
+      //     final dynamic state = call.arguments;
+      //     debugPrint("onReaderDetectionStatusEvent is $state");
+
+      //   } catch (e) {
+      //     rethrow;
+      //   }
+      // }
     });
   }
 
@@ -110,18 +103,14 @@ class FlutterAcsCardReader {
   }
 
   static Future<void> _stopListeningToScanResults() async {
-    await scanResultsSubscription?.cancel();
-  }
-
-  static Future<void> _stopListeningToDeviceConnectionResults() async {
+    await FlutterBluePlus.stopScan();
     await scanResultsSubscription?.cancel();
   }
 
   /// Private
   ///
-  static Future<void> _scanForDevices(int timeoutSeconds) async {
-    FlutterBluePlus.setLogLevel(LogLevel.verbose);
-
+  static Future<void> _scanForDevices(int timeoutSeconds,
+      {required User user}) async {
     /// check adapter availability
     if (await FlutterBluePlus.isAvailable == false) {
       debugPrint("Bluetooth not supported by this device");
@@ -146,17 +135,74 @@ class FlutterAcsCardReader {
         .where((s) => s == BluetoothAdapterState.on)
         .first;
 
-    /// Launch BLE scan
+    /// Set listener for Scan results
     ///
-    // TODO: Launch the scan
+    _setScanResultsListener(user: user);
+
+    /// Scan for BLE devices
+    /// Returns the Card terminal type
+    ///
+    await FlutterBluePlus.startScan();
   }
 
-  static Map<String, dynamic> _deviceToMap(BluetoothDevice device) {
-    return {
-      'name': device.localName,
-      'address': device.remoteId.str,
-      'type': device.type.index,
-    };
+  static _setScanResultsListener({required User user}) {
+    try {
+      scanResultsSubscription =
+          FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult result in results) {
+          BluetoothDevice device = result.device;
+          CardTerminalType? type = _cardTerminalType(device);
+          if (type is CardTerminalType) {
+            _deviceFoundEventController.add(device);
+            _connectToCardTerminal(
+              user: user,
+              cardTerminalDeviceType: type,
+            );
+            await _stopListeningToScanResults();
+          }
+        }
+      });
+    } catch (exception, stackTrace) {
+      debugPrintStack(stackTrace: stackTrace);
+      debugPrint("[FlutterBluePlus.scanResults] $exception");
+    }
+  }
+
+  static Future<void> _connectToCardTerminal({
+    required User user,
+    required CardTerminalType cardTerminalDeviceType,
+  }) async {
+    debugPrint(
+        "Start searching for Card Terminals of type $cardTerminalDeviceType");
+    try {
+      Map<String, dynamic> mappedUser = _userToMap(user);
+      await _channel.invokeMethod(
+        'connectToDevice',
+        {'driver': mappedUser},
+      );
+    } catch (e) {
+      throw Exception('Error reading smart card: $e');
+    }
+  }
+
+  static CardTerminalType? _cardTerminalType(BluetoothDevice device) {
+    String name = device.localName;
+
+    debugPrint("Found device with name $name");
+
+    if (name.contains("ACR")) {
+      if (name.contains("ACR3901")) {
+        return CardTerminalType.acr3901;
+      } else if (name.contains("ACR1255")) {
+        return CardTerminalType.acr1255;
+      } else if (name.contains("AMR220")) {
+        return CardTerminalType.amr220;
+      } else {
+        return CardTerminalType.acr1255v2;
+      }
+    }
+
+    return null;
   }
 
   static Map<String, dynamic> _userToMap(User user) {
