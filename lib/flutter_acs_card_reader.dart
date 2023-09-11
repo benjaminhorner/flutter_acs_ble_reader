@@ -85,15 +85,6 @@ class FlutterAcsCardReader {
           rethrow;
         }
       }
-      // else if (call.method == 'onDeviceConnectionStatusEvent') {
-      //   try {
-      //     final dynamic state = call.arguments;
-      //     debugPrint("onReaderDetectionStatusEvent is $state");
-
-      //   } catch (e) {
-      //     rethrow;
-      //   }
-      // }
     });
   }
 
