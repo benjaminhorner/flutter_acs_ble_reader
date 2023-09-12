@@ -4,6 +4,7 @@ import 'dart:io';
 // Import
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_acs_card_reader/enums/card_connection_state.enum.dart';
 import 'package:flutter_acs_card_reader/enums/card_terminal_type.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 import 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
@@ -38,6 +39,9 @@ class FlutterAcsCardReader {
   static final StreamController<BluetoothAdapterState>
       _bluetoothStatusController =
       StreamController<BluetoothAdapterState>.broadcast();
+  static final StreamController<CardConnectionState>
+      _cardConnectionStateEventController =
+      StreamController<CardConnectionState>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -48,6 +52,8 @@ class FlutterAcsCardReader {
       _deviceFoundEventController.stream;
   static Stream<BluetoothAdapterState> get bluetoothStatusStream =>
       _bluetoothStatusController.stream;
+  static Stream<CardConnectionState> get cardConnectionStateStream =>
+      _cardConnectionStateEventController.stream;
 
   /// Public
   ///
@@ -100,6 +106,17 @@ class FlutterAcsCardReader {
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
           debugPrint("[onDeviceFoundEvent] $exception");
+        }
+      } else if (call.method == 'onCardConnectionEvent') {
+        try {
+          final dynamic state = call.arguments;
+          debugPrint("onCardConnectionEvent $state");
+          CardConnectionState cardConnectionState =
+              _mapToCardConnectionState(state);
+          _cardConnectionStateEventController.add(cardConnectionState);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onCardConnectionEvent] $exception");
         }
       }
     });
@@ -238,6 +255,19 @@ class FlutterAcsCardReader {
     }
 
     return null;
+  }
+
+  static CardConnectionState _mapToCardConnectionState(String state) {
+    switch (state) {
+      case "BONDING":
+        return CardConnectionState.bonding;
+      case "CONNECTED":
+        return CardConnectionState.connected;
+      case "DISCONNECTED":
+        return CardConnectionState.disconnected;
+      default:
+        return CardConnectionState.disconnected;
+    }
   }
 
   static Map<String, dynamic> _userToMap(User user) {

@@ -36,7 +36,7 @@ class _MyAppState extends State<MyApp> {
   DeviceConnectionState _deviceConnectionState = DeviceConnectionState.pending;
   String _deviceName = "";
   bool _isScanning = false;
-  final String _cardActivity = "";
+  CardConnectionState _cardConnectionState = CardConnectionState.disconnected;
 
   @override
   void initState() {
@@ -95,6 +95,14 @@ class _MyAppState extends State<MyApp> {
         _deviceName = terminal.name ?? "NO NAME";
       });
     });
+
+    // Listen to Card connection State
+    FlutterAcsCardReader.cardConnectionStateStream
+        .listen((CardConnectionState state) {
+      setState(() {
+        _cardConnectionState = state;
+      });
+    });
   }
 
   @override
@@ -124,7 +132,7 @@ class _MyAppState extends State<MyApp> {
               const SizedBox(
                 height: 8,
               ),
-              Text("Card state: $_cardActivity"),
+              Text("Card state: $_cardConnectionState"),
               const SizedBox(
                 height: 8,
               ),
