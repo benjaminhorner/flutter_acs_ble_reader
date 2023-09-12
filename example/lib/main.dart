@@ -90,10 +90,9 @@ class _MyAppState extends State<MyApp> {
     });
 
     // Listen to Found devices
-    FlutterAcsCardReader.deviceFoundEventStream
-        .listen((BluetoothDevice device) {
+    FlutterAcsCardReader.deviceFoundEventStream.listen((CardTerminal terminal) {
       setState(() {
-        _deviceName = device.localName;
+        _deviceName = terminal.name ?? "NO NAME";
       });
     });
   }

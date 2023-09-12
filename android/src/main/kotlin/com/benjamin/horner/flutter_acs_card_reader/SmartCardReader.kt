@@ -68,22 +68,20 @@ class SmartCardReader
 
     private fun startScan(timeoutSeconds: Int) {
         Log.e(TAG, "Scanning for devices…")
-        class CardTerminalScanCallback : BluetoothTerminalManager.TerminalScanCallback {
-            override fun onScan(terminal: CardTerminal) {
-                if (terminal.name.contains("ACR")) {
-                    mManager?.stopScan()
-                    deviceNotifier.updateState(terminal, channel)
-                    activity.runOnUiThread {
-                        Log.e(TAG, terminal.name)
+
+        if (mManager != null) {
+            mManager!!.startScan(cardTerminalType, object : BluetoothTerminalManager.TerminalScanCallback {
+                override fun onScan(terminal: CardTerminal) {
+                    if (terminal.name.contains("ACR")) {
+                        mManager?.stopScan()
+                        deviceNotifier.updateState(terminal, channel)
+                        deviceConnectionStatusNotifier.updateState("CONNECTED", channel)
+                        activity.runOnUiThread {
+                            Log.e(TAG, terminal.name)
+                        }
                     }
                 }
-            }
-        }
-        
-        val scanCallback = CardTerminalScanCallback()
-        if (mManager != null) {
-            Log.e(TAG, "start scanning for devices…")
-            mManager!!.startScan(cardTerminalType, scanCallback)
+            })
         } else {
             Log.e(TAG, "mManager cannot be null at this point")
             deviceConnectionStatusNotifier.updateState("ERROR", channel)
@@ -94,8 +92,7 @@ class SmartCardReader
         mHandler.postDelayed({
             mManager?.stopScan()
             Log.e(TAG, "stop scanning for devices…")
-            deviceConnectionStatusNotifier.updateState("DISCONNECTED", channel)
-        }, timeoutSeconds.toLong())     
+        }, (timeoutSeconds*1000).toLong())     
     }
     
 }

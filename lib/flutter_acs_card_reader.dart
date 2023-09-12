@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acs_card_reader/enums/card_terminal_type.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
+import 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 import 'enums/device_search_state.enum.dart';
 import 'models/user.model.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -16,6 +17,7 @@ export 'enums/device_search_state.enum.dart';
 export 'package:flutter_blue_plus/flutter_blue_plus.dart';
 export 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 export 'models/user.model.dart';
+export 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 
 class FlutterAcsCardReader {
   static Timer? _timeOutTimer;
@@ -31,8 +33,8 @@ class FlutterAcsCardReader {
   static final StreamController<DeviceConnectionState>
       _deviceConnectionStateController =
       StreamController<DeviceConnectionState>.broadcast();
-  static final StreamController<BluetoothDevice> _deviceFoundEventController =
-      StreamController<BluetoothDevice>.broadcast();
+  static final StreamController<CardTerminal> _deviceFoundEventController =
+      StreamController<CardTerminal>.broadcast();
   static final StreamController<BluetoothAdapterState>
       _bluetoothStatusController =
       StreamController<BluetoothAdapterState>.broadcast();
@@ -42,7 +44,7 @@ class FlutterAcsCardReader {
       _deviceSearchStateController.stream;
   static Stream<DeviceConnectionState> get deviceConnectionStateStream =>
       _deviceConnectionStateController.stream;
-  static Stream<BluetoothDevice> get deviceFoundEventStream =>
+  static Stream<CardTerminal> get deviceFoundEventStream =>
       _deviceFoundEventController.stream;
   static Stream<BluetoothAdapterState> get bluetoothStatusStream =>
       _bluetoothStatusController.stream;
@@ -85,17 +87,19 @@ class FlutterAcsCardReader {
           } else if (connectionState == DeviceConnectionState.disconnected) {
             stopScanningSmartCardDevices();
           }
-        } catch (e) {
-          rethrow;
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onDeviceConnectionStatusEvent] $exception");
         }
       } else if (call.method == 'onDeviceFoundEvent') {
         try {
           final dynamic device = call.arguments;
           debugPrint("onDeviceFoundEvent $device");
-          BluetoothDevice bluetoothDevice = _mapToBluetoothDevice(device);
-          _deviceFoundEventController.add(bluetoothDevice);
-        } catch (e) {
-          rethrow;
+          CardTerminal cardTerminal = _mapToCardTerminal(device);
+          _deviceFoundEventController.add(cardTerminal);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onDeviceFoundEvent] $exception");
         }
       }
     });
@@ -209,11 +213,10 @@ class FlutterAcsCardReader {
     }
   }
 
-  static BluetoothDevice _mapToBluetoothDevice(Map<String, dynamic> map) {
-    return BluetoothDevice(
-      remoteId: map['remoteId'],
-      localName: map['localName'],
-      type: BluetoothDeviceType.le,
+  static CardTerminal _mapToCardTerminal(dynamic map) {
+    return CardTerminal(
+      name: map['name'],
+      isCardPresent: map['isCardPresent'],
     );
   }
 
