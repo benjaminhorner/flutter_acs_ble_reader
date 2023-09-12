@@ -18,6 +18,7 @@ export 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart'
 export 'models/user.model.dart';
 
 class FlutterAcsCardReader {
+  static Timer? _timeOutTimer;
   static const MethodChannel _channel =
       MethodChannel('flutter_acs_card_reader');
 
@@ -61,6 +62,7 @@ class FlutterAcsCardReader {
   static Future<void> stopScanningSmartCardDevices() async {
     try {
       await FlutterBluePlus.stopScan();
+      _timeOutTimer?.cancel();
       _stopListeningToScanResults();
       _deviceSearchStateController.add(DeviceSearchState.stopped);
     } on PlatformException catch (e) {
@@ -80,7 +82,18 @@ class FlutterAcsCardReader {
           _deviceConnectionStateController.add(connectionState);
           if (connectionState == DeviceConnectionState.error) {
             stopScanningSmartCardDevices();
+          } else if (connectionState == DeviceConnectionState.disconnected) {
+            stopScanningSmartCardDevices();
           }
+        } catch (e) {
+          rethrow;
+        }
+      } else if (call.method == 'onDeviceFoundEvent') {
+        try {
+          final dynamic device = call.arguments;
+          debugPrint("onDeviceFoundEvent $device");
+          BluetoothDevice bluetoothDevice = _mapToBluetoothDevice(device);
+          _deviceFoundEventController.add(bluetoothDevice);
         } catch (e) {
           rethrow;
         }
@@ -128,15 +141,25 @@ class FlutterAcsCardReader {
 
     /// Set listener for Scan results
     ///
-    _setScanResultsListener(user: user);
+    _setScanResultsListener(
+      user: user,
+      timeoutSeconds: timeoutSeconds,
+    );
 
     /// Scan for BLE devices
     /// Returns the Card terminal type
     ///
-    await FlutterBluePlus.startScan();
+    await FlutterBluePlus.startScan(
+      timeout: Duration(
+        seconds: timeoutSeconds,
+      ),
+    );
   }
 
-  static _setScanResultsListener({required User user}) {
+  static _setScanResultsListener({
+    required User user,
+    required int timeoutSeconds,
+  }) async {
     try {
       scanResultsSubscription =
           FlutterBluePlus.scanResults.listen((results) async {
@@ -144,24 +167,30 @@ class FlutterAcsCardReader {
           BluetoothDevice device = result.device;
           CardTerminalType? type = _cardTerminalType(device);
           if (type is CardTerminalType) {
-            _deviceFoundEventController.add(device);
             _connectToCardTerminal(
               user: user,
               cardTerminalDeviceType: type,
+              timeoutSeconds: timeoutSeconds,
             );
-            await _stopListeningToScanResults();
+            await stopScanningSmartCardDevices();
           }
         }
       });
+      _timeOutTimer = Timer(
+        Duration(seconds: timeoutSeconds),
+        () async => await stopScanningSmartCardDevices(),
+      );
     } catch (exception, stackTrace) {
       debugPrintStack(stackTrace: stackTrace);
       debugPrint("[FlutterBluePlus.scanResults] $exception");
+      await stopScanningSmartCardDevices();
     }
   }
 
   static Future<void> _connectToCardTerminal({
     required User user,
     required CardTerminalType cardTerminalDeviceType,
+    required int timeoutSeconds,
   }) async {
     debugPrint(
         "Start searching for Card Terminals of type $cardTerminalDeviceType");
@@ -169,11 +198,23 @@ class FlutterAcsCardReader {
       Map<String, dynamic> mappedUser = _userToMap(user);
       await _channel.invokeMethod(
         'connectToDevice',
-        {'driver': mappedUser},
+        {
+          'driver': mappedUser,
+          'cardTerminalType': cardTerminalDeviceType.index,
+          'timeoutSeconds': timeoutSeconds
+        },
       );
     } catch (e) {
       throw Exception('Error reading smart card: $e');
     }
+  }
+
+  static BluetoothDevice _mapToBluetoothDevice(Map<String, dynamic> map) {
+    return BluetoothDevice(
+      remoteId: map['remoteId'],
+      localName: map['localName'],
+      type: BluetoothDeviceType.le,
+    );
   }
 
   static CardTerminalType? _cardTerminalType(BluetoothDevice device) {

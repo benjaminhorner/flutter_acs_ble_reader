@@ -51,10 +51,12 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         when (call.method) {
             "connectToDevice" -> {
                 val driver = call.argument<Map<String, Any>>("driver")
-                if (driver != null) {
-                    connectToDevice(result, driver)
+                val cardTerminalType = call.argument<Int>("cardTerminalType")
+                val timeoutSeconds = call.argument<Int>("timeoutSeconds")
+                if (driver != null && cardTerminalType != null && timeoutSeconds != null) {
+                    connectToDevice(result, driver, cardTerminalType, timeoutSeconds)
                 } else {
-                    result.error("INVALID_DEVICE", "Invalid driver parameter", null)
+                    result.error("INVALID_DEVICE", "Invalid driver, cardTerminalType or timeoutSeconds parameter", null)
                 }
             }
             else -> {
@@ -63,7 +65,12 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         }
     }   
 
-    private fun connectToDevice(result: Result, driverMap: Map<String, Any>) {
+    private fun connectToDevice(
+        result: Result, 
+        driverMap: Map<String, Any>,
+        cardTerminalType: Int, 
+        timeoutSeconds: Int,
+        ) {
         val card = driverMap["card"] as? String
         val name = driverMap["name"] as? String
         val firstName = driverMap["firstName"] as? String
@@ -78,7 +85,7 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
                 email = email,
                 tel = phone
             )
-            smartCardReader.connectToDevice(activity, context, driver)
+            smartCardReader.connectToDevice(activity, context, driver, cardTerminalType, timeoutSeconds)
         } else {
             result.error("INVALID_DEVICE", "Invalid device address", null)
         }
