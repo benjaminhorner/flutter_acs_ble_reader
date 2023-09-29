@@ -157,8 +157,11 @@ class FlutterAcsCardReader {
           debugPrint(state.toString());
           return state;
         })
-        .where((s) => s == BluetoothAdapterState.on)
-        .first;
+        .where(
+          (s) => s == BluetoothAdapterState.on,
+        )
+        .first
+        .then((value) => null);
 
     /// Set listener for Scan results
     ///

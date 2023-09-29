@@ -3,7 +3,7 @@ package com.benjamin.horner.flutter_acs_card_reader
 /// Local
 import com.benjamin.horner.flutter_acs_card_reader.Driver
 import com.benjamin.horner.flutter_acs_card_reader.DeviceNotifier
-import com.benjamin.horner.flutter_acs_card_reader.HexToBytesHelper
+import com.benjamin.horner.flutter_acs_card_reader.HexHelper
 import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
 
 /// Flutter
@@ -29,11 +29,12 @@ import javax.smartcardio.CommandAPDU
 import javax.smartcardio.ResponseAPDU
 import javax.smartcardio.CardException
 import javax.smartcardio.Card
+import javax.smartcardio.ATR
 
 private val TAG = "SmartCardReader"
 private val deviceConnectionStatusNotifier = DeviceConnectionStatusNotifier()
 private val deviceNotifier = DeviceNotifier()
-private val hexToBytesHelper = HexToBytesHelper()
+private val hexToBytesHelper = HexHelper()
 private val cardConnectionStateNotifier = CardConnectionStateNotifier()
 
 class SmartCardReader
@@ -109,21 +110,70 @@ class SmartCardReader
         /* Variables */
         var card: Card
         var cardChannel: CardChannel
-        val hexString = "00 A4 02 0C 02 05 05"
-        val byteArray = hexToBytesHelper.hexStringToByteArray(hexString)
+        /* APDU Commands */
+        val APDU_SELECT_LENGTH_2BYTES = "00 A4 02 0C 02"
+        val APDU_SELECT_LENGTH_6BYTES = "00 A4 04 0C 06"
+        val MF = "${APDU_SELECT_LENGTH_2BYTES} 3F 00"
+        val EF_ICC = "${APDU_SELECT_LENGTH_2BYTES} 00 02"
+        val EF_IC = "${APDU_SELECT_LENGTH_2BYTES} 00 05"
+        val DF_TACHOGRAPH = "${APDU_SELECT_LENGTH_6BYTES} FF 54 41 43 48 4F"
+        val EF_APP_IDENTIFICATION = "${APDU_SELECT_LENGTH_2BYTES} 05 01"
+        val EF_IDENTIFICATION = "${APDU_SELECT_LENGTH_2BYTES} 05 20"
+        val EF_CARD_DOWNLOAD = "${APDU_SELECT_LENGTH_2BYTES} 05 0E"
+        val EF_DRIVING_LICENCE_INFO = "${APDU_SELECT_LENGTH_2BYTES} 05 21"
+        val EF_EVENTS_DATA = "${APDU_SELECT_LENGTH_2BYTES} 05 02"
+        val EF_FAULTS_DATA = "${APDU_SELECT_LENGTH_2BYTES} 05 03"
+        val EF_DRIVER_ACTIVITY_DATA = "${APDU_SELECT_LENGTH_2BYTES} 05 04"
+        val EF_VEHICULES_USED = "${APDU_SELECT_LENGTH_2BYTES} 05 05"
+        val EF_PLACES = "${APDU_SELECT_LENGTH_2BYTES} 05 06"
+        val EF_CURRENT_USAGE = "${APDU_SELECT_LENGTH_2BYTES} 05 07"
+        val EF_CONTROL_ACTIVITY_DATA = "${APDU_SELECT_LENGTH_2BYTES} 05 08"
+        val EF_SPECIFIC_CONDITIONS = "${APDU_SELECT_LENGTH_2BYTES} 05 22"
+        val EF_CARD_CERTIFICATE = "${APDU_SELECT_LENGTH_2BYTES} C1 00"
+        val EF_CA_CERTIFICATE = "${APDU_SELECT_LENGTH_2BYTES} C1 08"
+        val DF_TACHOGRAPH_G2 = "${APDU_SELECT_LENGTH_6BYTES} FF 53 4D 52 44 54"
+        val EF_VEHICULEUNITS_USED = "${APDU_SELECT_LENGTH_2BYTES} 05 23"
+        val EF_GNSS_PLACES = "${APDU_SELECT_LENGTH_2BYTES} 05 24"
+        val EF_CARDSIGNCERTIFICATE = "${APDU_SELECT_LENGTH_2BYTES} C1 01"
+        val EF_LINK_CERTIFICATE = "${APDU_SELECT_LENGTH_2BYTES} C1 09"
 
         Log.e(TAG, "Connecting to card")
         cardConnectionStateNotifier.updateState("BONDING", channel)
 
         try {
             card = terminal.connect("*")
+            val atr: ATR = card.atr
+            val atrBytes: ByteArray = atr.bytes
+            val atrHex: String = hexToBytesHelper.byteArrayToHexString(atrBytes)
+            Log.e(TAG, "ATR is: ${atrHex}")
             Log.e(TAG, "Established connection to card!")
+
             cardConnectionStateNotifier.updateState("CONNECTED", channel)
+
             cardChannel = card.basicChannel
-            val commandAPDU = CommandAPDU(byteArray)
-            val responseAPDU: ResponseAPDU = cardChannel.transmit(commandAPDU)
-            Log.e(TAG, "Starting APDU Command")
-            println("${TAG}: ${responseAPDU.bytes.joinToString { it.toString(16).padStart(2, '0') }}")
+            val commandAPDU = CommandAPDU(
+                hexToBytesHelper.hexStringToByteArray(EF_ICC)
+            )
+            val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
+            val responseData: ByteArray = response.data
+            val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
+            val responseString: String = hexToBytesHelper.hexStringToAscii(responseHex)
+
+            val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
+            val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
+
+            if (sw1 != null && sw2 != null && sw1 == 0x90 && sw2 == 0x00) {
+                // The response indicates success (SW1 = 0x90, SW2 = 0x00).
+                // Process responseData accordingly.
+                Log.e(TAG, "APDU sw1 was ${sw1} and sw2 was ${sw2}")
+                Log.e(TAG, "APDU Response data to String: ${responseString}")
+            } else {
+                // An error occurred. Handle the error based on the SW1 and SW2 values.
+                Log.e(TAG, "Unable to transmit APDU. sw1 was ${sw1} and sw2 was ${sw2}")
+                // TODO: Handle the APDU error
+            }
+            
+            
         } catch (e: CardException) {
             Log.e(TAG, "Unable to connect to card")
             cardConnectionStateNotifier.updateState("DISCONNECTED", channel)
