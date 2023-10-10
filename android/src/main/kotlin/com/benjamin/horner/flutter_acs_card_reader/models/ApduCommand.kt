@@ -3,11 +3,12 @@ package com.benjamin.horner.flutter_acs_card_reader
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
 
 data class ApduCommand (
-    var command: String = "",
+    var selectCommand: String = "",
+    var readCommand: String = "",
     var name: String = "",
-    var debugName: String = "",
     var lengthMin: Int = 0,
     var lengthMax: Int = 0,
     var cardGen: CardGen = CardGen.GEN1,
-    var needsSignature: Boolean = false
+    var needsSignature: Boolean = false,
+    var isEF: Boolean = true
 )
