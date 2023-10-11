@@ -1,5 +1,7 @@
 package com.benjamin.horner.flutter_acs_card_reader
 
+import java.nio.charset.StandardCharsets
+
 class HexHelper {
     fun byteArrayToHexString(buffer: ByteArray): String {
         var bufferString = ""
@@ -26,7 +28,7 @@ class HexHelper {
         return byteArray
     }
 
-    fun convertHexToString(hex: String): String {
+    fun convertHexToASCII(hex: String): String {
         var hex = hex.replace(" ", "") // Remove spaces
         var ascii = ""
         var str: String

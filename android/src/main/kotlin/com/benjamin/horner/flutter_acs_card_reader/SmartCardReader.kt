@@ -115,8 +115,8 @@ class SmartCardReader
         var cardChannel: CardChannel
         
         /* APDU Commands */
-        val APDU_SELECT_BY_MF_OR_EF = "00 A4 02 0C 02"
-        val APDU_SELECT_BY_DF = "00 A4 04 0C 06"
+        val APDU_SELECT_BY_MF_OR_EF: String = "00 A4 02 0C 02"
+        val APDU_SELECT_BY_DF: String = "00 A4 04 0C 06"
 
         val apduList: List<ApduCommand> = listOf(
             ApduCommand(
@@ -137,14 +137,26 @@ class SmartCardReader
                 lengthMax = 8
             ),
             ApduCommand(
-                selectCommand = "${APDU_SELECT_BY_FID} FF 54 41 43 48 4F",
+                selectCommand = "${APDU_SELECT_BY_DF} FF 54 41 43 48 4F",
                 name = "DF_TACHOGRAPH",
                 isEF = false
             ),
             ApduCommand(
-                selectCommand = "${APDU_SELECT_BY_FID} FF 53 4D 52 44 54",
+                selectCommand = "${APDU_SELECT_BY_DF} FF 53 4D 52 44 54",
                 name = "DF_TACHOGRAPH_G2",
                 isEF = false
+            ),
+            ApduCommand(
+                selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
+                name = "EF_APP_IDENTIFICATION",
+                lengthMin = 17,
+                lengthMax = 17
+            ),
+            ApduCommand(
+                selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 20",
+                name = "EF_IDENTIFICATION",
+                lengthMin = 143,
+                lengthMax = 143
             ),
         )
 
@@ -194,7 +206,7 @@ class SmartCardReader
                 val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
                 val responseData: ByteArray = response.data
                 val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
-                val responseDataToString: String = hexToBytesHelper.convertHexToString(responseHex)
+                val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
                 val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
                 val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
@@ -203,6 +215,7 @@ class SmartCardReader
                     // The response indicates success (SW1 = 0x90, SW2 = 0x00).
                     // Process responseData accordingly.
                     if (apdu.isEF) {
+                        performHashCommand(cardChannel)
                         read(cardChannel, apdu)
                     }
                 } else if (sw1 != null && sw1 == 0x6C) {
@@ -217,8 +230,6 @@ class SmartCardReader
                 }
             }
             
-            // read(cardChannel, apduReadList)
-
             card.disconnect(true)
 
             cardConnectionStateNotifier.updateState("DISCONNECTED", channel)
@@ -234,7 +245,7 @@ class SmartCardReader
         try {
             var p1: String = "00"
             var readCommand = "00 B0 ${p1} 00 ${byteLength(apdu, 0)}"
-                val commandAPDU = CommandAPDU(
+            val commandAPDU = CommandAPDU(
                 hexToBytesHelper.hexStringToByteArray(readCommand)
             )
             
@@ -243,7 +254,7 @@ class SmartCardReader
             val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
             val responseData: ByteArray = response.data
             val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
-            val responseDataToString: String = hexToBytesHelper.convertHexToString(responseHex)
+            val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
             val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
             val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
@@ -252,7 +263,7 @@ class SmartCardReader
                 // The response indicates success (SW1 = 0x90, SW2 = 0x00).
                 // Process responseData accordingly.
                 Log.e(TAG, "APDU Read name was ${apdu.name}")
-                Log.e(TAG, "APDU Read sw1 was ${sw1} and sw2 was ${sw2}")
+                Log.e(TAG, "APDU Read sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
                 Log.e(TAG, "APDU Read Response data size: ${responseData.size}")
                 Log.e(TAG, "APDU Read Response Hex: ${responseHex}")
                 Log.e(TAG, "APDU Read response data String ${responseDataToString}")
@@ -284,10 +295,52 @@ class SmartCardReader
     }
 
     private fun padHex(hex: String): String {
-    return if (hex.length == 1) {
-        "0$hex"
-    } else {
-        hex
+        return if (hex.length == 1) {
+            "0$hex"
+        } else {
+            hex
+        }
     }
-}
+
+    private fun performHashCommand(cardChannel: CardChannel) {
+        val HASH_COMMAND: String = "80 2A 90 00"
+
+        try {
+            val commandAPDU = CommandAPDU(
+                hexToBytesHelper.hexStringToByteArray(HASH_COMMAND)
+            )
+            
+            Log.e(TAG, "Perform hash command")
+
+            val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
+
+            val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
+            val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
+
+            if (sw1 != null && sw2 != null && sw1 == 0x90 && sw2 == 0x00) {
+                // The response indicates success (SW1 = 0x90, SW2 = 0x00).
+                // Process responseData accordingly.
+                Log.e(TAG, "Hash command sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
+            } else if (sw1 != null && sw1 == 0x6C) {
+                val remainingBytes = sw2
+                Log.e(TAG, "Remaining Read bytes: $remainingBytes")
+            }
+            else {
+                // An error occurred. Handle the error based on the SW1 and SW2 values.
+                Log.e(TAG, "Unable to make hash command sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
+                // TODO: Handle the APDU error
+            }
+            
+        } catch (e: CardException) {
+            Log.e(TAG, "Unable to connect to card")
+            cardConnectionStateNotifier.updateState("DISCONNECTED", channel)
+            e.printStackTrace()
+            // TODO: handle error
+        }
+    }
+
+    private fun performSign() {
+        val TG1_SIGNATURE = "00 2A 9E 9A 80" // 128 bytes
+        var TG2_SIGNATURE: String? = null // 64…132 bytes
+    }
 }
