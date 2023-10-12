@@ -68,8 +68,6 @@ class HexHelper {
         return str
     }
 
-
-
     fun hexStringToAscii(hexString: String): String {
         val sanitizedHex = hexString.replace(" ", "") // Remove spaces from the hex string
         val result = StringBuilder()
@@ -79,5 +77,34 @@ class HexHelper {
             result.append(decimal.toChar())
         }
         return result.toString()
-    }        
+    }
+
+    fun byteLength(apdu: ApduCommand, offset: Int): String {
+        if (apdu.lengthMin == apdu.lengthMax) {
+            return padHex(Integer.toHexString(apdu.lengthMin))
+        } else {
+            // TODO: offset by remaining bytes
+            return padHex(Integer.toHexString(apdu.lengthMin))
+        }
+    }
+
+    private fun padHex(hex: String): String {
+        val paddedHex = if (hex.length % 2 == 1) {
+            "0$hex"
+        } else {
+            hex
+        }
+
+        val spacedHex = buildString {
+            for (i in 0 until paddedHex.length step 2) {
+                if (i > 0) {
+                    append(' ') // Add a space after every 2 characters
+                }
+                append(paddedHex.substring(i, i + 2))
+            }
+        }
+
+        return spacedHex
+    }
+ 
 }
