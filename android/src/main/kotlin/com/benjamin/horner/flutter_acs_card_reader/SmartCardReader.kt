@@ -54,7 +54,11 @@ class SmartCardReader
     private var mManager: BluetoothTerminalManager? = null
     private var mFactory: TerminalFactory? = null
     private var mHandler: Handler = Handler()
-    private var cardVersion: CardGen? = null
+    private var cardStructureVersion: CardGen? = null
+    private var noOfEventsPerType: Int = 0
+    private var noOfFaultsPerType: Int = 0
+    private var noOfCardVehicleRecords: Int = 0
+    private var noOfCardPlaceRecords: Int = 0
     private var uploadSteps: Int = 0
 
     fun connectToDevice(
@@ -139,13 +143,13 @@ class SmartCardReader
 
             cardChannel = card.basicChannel
 
-            if (cardVersion == null) {
+            if (cardStructureVersion == null) {
                 getCardVersion(cardChannel)
             }
 
-            Log.e(TAG, "Card version is: ${cardVersion}")
+            Log.e(TAG, "Card version is: ${cardStructureVersion}")
 
-            val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardVersion!!)
+            val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardStructureVersion!!)
 
             totalReadStepsStatusNotifier.updateState(apduList.size - 1, channel)
 
@@ -229,7 +233,7 @@ class SmartCardReader
                 Log.e(TAG, "APDU Read Response data size: ${responseData.size}")
                 Log.e(TAG, "APDU Read Response Hex: ${responseHex}")
                 if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
-                    setCardVersion(responseHex)
+                    setCardStructureVersionAndNoOfVariables(responseHex)
                 } else {
                     addToC1BFile(responseHex, apdu)
                 }
@@ -268,21 +272,43 @@ class SmartCardReader
         }
     }
 
-    private fun setCardVersion(hexString: String) {
+    private fun setCardStructureVersionAndNoOfVariables(hexString: String) {
         val hexValues = hexString.split(" ") // Split the hex string into individual byte values
-        if (hexValues.size >= 3) {
-            val generationHex = hexValues[1] // Get the second byte (0x01)
-            val versionHex = hexValues[2]  // Get the third byte (0x01)
-            Log.e(TAG, "Card Generation Hex is: $hexString")
-            Log.e(TAG, "Card Generation is: $generationHex")
-            Log.e(TAG, "Card version number is: $versionHex")
+        if (hexValues.size >= 10) {
+            val generationHex = hexValues[1]
+            val versionHex = hexValues[2] 
+            
+            val noOfEventsPerTypeHex = hexValues[3]
+            val noOfFaultsPerTypeHex = hexValues[4]
+            var noOfCardVehicleRecordsHex = hexValues[7]
+            noOfCardVehicleRecordsHex += hexValues[8]
+            val noOfCardPlaceRecordsHex = hexValues[9]  
+
+            Log.e(TAG, "Card Structure Hex is: $hexString")
+            Log.e(TAG, "Card Structure Card Generation is: $generationHex")
+            Log.e(TAG, "Card Structure Card version number is: $versionHex")
+            Log.e(TAG, "Card Structure noOfEventsPerTypeHex is: $noOfEventsPerTypeHex")
+            Log.e(TAG, "Card Structure noOfFaultsPerTypeHex is: $noOfFaultsPerTypeHex")
+            Log.e(TAG, "Card Structure noOfCardVehicleRecordsHex is: $noOfCardVehicleRecordsHex")
+            Log.e(TAG, "Card Structure noOfCardPlaceRecordsHex is: $noOfCardPlaceRecordsHex")
+
             if (generationHex == "00") {
-                cardVersion = CardGen.GEN1
+                cardStructureVersion = CardGen.GEN1
             } else if (generationHex == "01" && versionHex == "00") {
-                cardVersion = CardGen.GEN2
+                cardStructureVersion = CardGen.GEN2
             } else {
-                cardVersion = CardGen.GEN2V2
+                cardStructureVersion = CardGen.GEN2V2
             }
+
+            noOfEventsPerType = noOfEventsPerTypeHex.toInt(16)
+            noOfFaultsPerType = noOfFaultsPerTypeHex.toInt(16)
+            noOfCardVehicleRecords = noOfCardVehicleRecordsHex.toInt(16)
+            noOfCardPlaceRecords = noOfCardPlaceRecordsHex.toInt(16)
+
+            Log.e(TAG, "Card Structure noOfEventsPerType is: $noOfEventsPerType")
+            Log.e(TAG, "Card Structure noOfFaultsPerType is: $noOfFaultsPerType")
+            Log.e(TAG, "Card Structure noOfCardVehicleRecords is: $noOfCardVehicleRecords")
+            Log.e(TAG, "Card Structure noOfCardPlaceRecords is: $noOfCardPlaceRecords")
 
         } else {
             Log.e(TAG, "Hex string does not contain enough bytes.")
@@ -337,12 +363,20 @@ class SmartCardReader
         var TG2_SIGNATURE: String? = null // 64…132 bytes
     }
 
-    private fun disconnectCard(channel: MethodChannel, card: Card? = null) {
+    private fun disconnectCard(
+        channel: MethodChannel,
+        card: Card? = null
+        ) {
         if (card != null) {
             card.disconnect(true)
         }
         uploadSteps = 0
-        cardVersion = null
+        cardStructureVersion = null
+        noOfCardPlaceRecords = 0
+        noOfCardVehicleRecords = 0
+        noOfEventsPerType = 0
+        noOfFaultsPerType = 0
+        deviceConnectionStatusNotifier.updateState("DISCONNECTED", channel)
         cardConnectionStateNotifier.updateState("DISCONNECTED", channel)
     }
 }
