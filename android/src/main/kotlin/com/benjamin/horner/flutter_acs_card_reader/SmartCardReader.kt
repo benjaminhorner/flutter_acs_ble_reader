@@ -3,6 +3,8 @@ package com.benjamin.horner.flutter_acs_card_reader
 /// Local
 import com.benjamin.horner.flutter_acs_card_reader.Driver
 import com.benjamin.horner.flutter_acs_card_reader.DeviceNotifier
+import com.benjamin.horner.flutter_acs_card_reader.TotalReadStepsStatusNotifier
+import com.benjamin.horner.flutter_acs_card_reader.CurrentReadStepStatusNotifier
 import com.benjamin.horner.flutter_acs_card_reader.HexHelper
 import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
@@ -40,6 +42,8 @@ private val deviceConnectionStatusNotifier = DeviceConnectionStatusNotifier()
 private val deviceNotifier = DeviceNotifier()
 private val hexToBytesHelper = HexHelper()
 private val cardConnectionStateNotifier = CardConnectionStateNotifier()
+private val totalReadStepsStatusNotifier = TotalReadStepsStatusNotifier()
+private val currentReadStepStatusNotifier = CurrentReadStepStatusNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
 
 class SmartCardReader
@@ -51,6 +55,7 @@ class SmartCardReader
     private var mFactory: TerminalFactory? = null
     private var mHandler: Handler = Handler()
     private var cardVersion: CardGen? = null
+    private var uploadSteps: Int = 0
 
     fun connectToDevice(
         activity: Activity, 
@@ -141,6 +146,8 @@ class SmartCardReader
             Log.e(TAG, "Card version is: ${cardVersion}")
 
             val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardVersion!!)
+
+            totalReadStepsStatusNotifier.updateState(apduList.size - 1, channel)
 
             selectAndRead(cardChannel, apduList)
             
@@ -284,6 +291,7 @@ class SmartCardReader
 
     private fun addToC1BFile(hexString: String, apdu: ApduCommand) {
         Log.e(TAG, "Hex string for ${apdu.name} was ${hexString}")
+        currentReadStepStatusNotifier.updateState(uploadSteps++, channel)
     }
 
     private fun performHashCommand(cardChannel: CardChannel) {
@@ -333,6 +341,7 @@ class SmartCardReader
         if (card != null) {
             card.disconnect(true)
         }
+        uploadSteps = 0
         cardVersion = null
         cardConnectionStateNotifier.updateState("DISCONNECTED", channel)
     }

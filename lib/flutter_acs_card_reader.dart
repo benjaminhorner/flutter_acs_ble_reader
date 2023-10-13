@@ -42,6 +42,10 @@ class FlutterAcsCardReader {
   static final StreamController<CardConnectionState>
       _cardConnectionStateEventController =
       StreamController<CardConnectionState>.broadcast();
+  static final StreamController<int> _totalReadStepsStateEventController =
+      StreamController<int>.broadcast();
+  static final StreamController<int> _currentReadStepStateEventController =
+      StreamController<int>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -54,6 +58,10 @@ class FlutterAcsCardReader {
       _bluetoothStatusController.stream;
   static Stream<CardConnectionState> get cardConnectionStateStream =>
       _cardConnectionStateEventController.stream;
+  static Stream<int> get totalReadStepsStateStream =>
+      _totalReadStepsStateEventController.stream;
+  static Stream<int> get currentReadStepStateStream =>
+      _currentReadStepStateEventController.stream;
 
   /// Public
   ///
@@ -117,6 +125,24 @@ class FlutterAcsCardReader {
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
           debugPrint("[onCardConnectionEvent] $exception");
+        }
+      } else if (call.method == 'onUpdateTotalReadStepsEvent') {
+        try {
+          final dynamic state = call.arguments;
+          debugPrint("onUpdateTotalReadStepsEvent $state");
+          _totalReadStepsStateEventController.add(state);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onUpdateTotalReadStepsEvent] $exception");
+        }
+      } else if (call.method == 'onUpdateCurrentReadStepEvent') {
+        try {
+          final dynamic state = call.arguments;
+          debugPrint("onUpdateCurrentReadStepEvent $state");
+          _currentReadStepStateEventController.add(state);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onUpdateCurrentReadStepEvent] $exception");
         }
       }
     });

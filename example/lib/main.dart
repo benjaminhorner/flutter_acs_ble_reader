@@ -37,6 +37,8 @@ class _MyAppState extends State<MyApp> {
   String _deviceName = "";
   bool _isScanning = false;
   CardConnectionState _cardConnectionState = CardConnectionState.disconnected;
+  int _totalReadSteps = 0;
+  int _currentReadStep = 0;
 
   @override
   void initState() {
@@ -103,6 +105,20 @@ class _MyAppState extends State<MyApp> {
         _cardConnectionState = state;
       });
     });
+
+    // Listen to Read Steps
+    FlutterAcsCardReader.totalReadStepsStateStream.listen((int state) {
+      setState(() {
+        _totalReadSteps = state;
+      });
+    });
+
+    // Listen to Read Steps
+    FlutterAcsCardReader.currentReadStepStateStream.listen((int state) {
+      setState(() {
+        _currentReadStep = state;
+      });
+    });
   }
 
   @override
@@ -136,8 +152,18 @@ class _MyAppState extends State<MyApp> {
               const SizedBox(
                 height: 8,
               ),
+              Text(
+                  "Reading APDU Progress: ${_totalReadSteps > 0 ? ((_currentReadStep / _totalReadSteps) * 100).toInt() : 0}%"),
+              const SizedBox(
+                height: 8,
+              ),
               ElevatedButton(
-                onPressed: _isScanning ? _stopScan : _startScan,
+                onPressed:
+                    _deviceConnectionState == DeviceConnectionState.connected
+                        ? null
+                        : _isScanning
+                            ? _stopScan
+                            : _startScan,
                 child: Text(_isScanning ? "Stop Scan" : "Start Scan"),
               ),
             ],
