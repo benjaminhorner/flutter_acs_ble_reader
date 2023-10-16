@@ -274,15 +274,14 @@ class SmartCardReader
 
     private fun setCardStructureVersionAndNoOfVariables(hexString: String) {
         val hexValues = hexString.split(" ") // Split the hex string into individual byte values
-        if (hexValues.size >= 10) {
+        if (hexValues.size >= 17) {
             val generationHex = hexValues[1]
             val versionHex = hexValues[2] 
             
             val noOfEventsPerTypeHex = hexValues[3]
             val noOfFaultsPerTypeHex = hexValues[4]
-            var noOfCardVehicleRecordsHex = hexValues[7]
-            noOfCardVehicleRecordsHex += hexValues[8]
-            val noOfCardPlaceRecordsHex = hexValues[9]  
+            val noOfCardVehicleRecordsHex = hexValues[7] + hexValues[8]
+            val noOfCardPlaceRecordsHex = hexValues[9] + hexValues[10]
 
             Log.e(TAG, "Card Structure Hex is: $hexString")
             Log.e(TAG, "Card Structure Card Generation is: $generationHex")
@@ -292,13 +291,7 @@ class SmartCardReader
             Log.e(TAG, "Card Structure noOfCardVehicleRecordsHex is: $noOfCardVehicleRecordsHex")
             Log.e(TAG, "Card Structure noOfCardPlaceRecordsHex is: $noOfCardPlaceRecordsHex")
 
-            if (generationHex == "00") {
-                cardStructureVersion = CardGen.GEN1
-            } else if (generationHex == "01" && versionHex == "00") {
-                cardStructureVersion = CardGen.GEN2
-            } else {
-                cardStructureVersion = CardGen.GEN2V2
-            }
+            setCardGenerationAndVersion(generationHex, versionHex)
 
             noOfEventsPerType = noOfEventsPerTypeHex.toInt(16)
             noOfFaultsPerType = noOfFaultsPerTypeHex.toInt(16)
@@ -310,8 +303,28 @@ class SmartCardReader
             Log.e(TAG, "Card Structure noOfCardVehicleRecords is: $noOfCardVehicleRecords")
             Log.e(TAG, "Card Structure noOfCardPlaceRecords is: $noOfCardPlaceRecords")
 
-        } else {
+        } else if (hexValues.size >= 3) {
+            val generationHex = hexValues[1]
+            val versionHex = hexValues[2] 
+
+            Log.e(TAG, "Card Structure Hex is: $hexString")
+            Log.e(TAG, "Card Structure Card Generation is: $generationHex")
+            Log.e(TAG, "Card Structure Card version number is: $versionHex")
+
+            setCardGenerationAndVersion(generationHex, versionHex)
+        }
+        else {
             Log.e(TAG, "Hex string does not contain enough bytes.")
+        }
+    }
+
+    private fun setCardGenerationAndVersion(generationHex: String, versionHex: String) {
+        if (generationHex == "00") {
+            cardStructureVersion = CardGen.GEN1
+        } else if (generationHex == "01" && versionHex == "00") {
+            cardStructureVersion = CardGen.GEN2
+        } else {
+            cardStructureVersion = CardGen.GEN2V2
         }
     }
 
