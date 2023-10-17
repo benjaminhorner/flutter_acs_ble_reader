@@ -10,6 +10,7 @@ import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommandListGenerator
+import com.benjamin.horner.flutter_acs_card_reader.NoOfVarModel
 
 /// Flutter
 import io.flutter.plugin.common.MethodChannel
@@ -55,10 +56,7 @@ class SmartCardReader
     private var mFactory: TerminalFactory? = null
     private var mHandler: Handler = Handler()
     private var cardStructureVersion: CardGen? = null
-    private var noOfEventsPerType: Int = 0
-    private var noOfFaultsPerType: Int = 0
-    private var noOfCardVehicleRecords: Int = 0
-    private var noOfCardPlaceRecords: Int = 0
+    private var noOfVarModel: NoOfVarModel = NoOfVarModel()
     private var uploadSteps: Int = 0
 
     fun connectToDevice(
@@ -149,7 +147,7 @@ class SmartCardReader
 
             Log.e(TAG, "Card version is: ${cardStructureVersion}")
 
-            val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardStructureVersion!!)
+            val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardStructureVersion!!, noOfVarModel)
 
             totalReadStepsStatusNotifier.updateState(apduList.size - 1, channel)
 
@@ -186,7 +184,7 @@ class SmartCardReader
                     // Process responseData accordingly.
                     if (apdu.isEF) {
                         performHashCommand(cardChannel)
-                        read(cardChannel, apdu, getCardVersion)
+                        loopOrRead(cardChannel, apdu, getCardVersion)
                     }
                 } else if (sw1 != null && sw1 == 0x6C) {
                     val remainingBytes = sw2
@@ -208,51 +206,73 @@ class SmartCardReader
         }
     }
 
-    private fun read(cardChannel: CardChannel, apdu: ApduCommand, getCardVersion: Boolean = false) {
-        try {
-            var p1: String = "00"
-            var readCommand = "00 B0 ${p1} 00 ${hexToBytesHelper.byteLength(apdu, 0)}"
+    private fun loopOrRead(
+        cardChannel: CardChannel, 
+        apdu: ApduCommand,
+        getCardVersion: Boolean = false
+        ) {
+            if (apdu.lengthMin > 255) {
+                var offset = 0
+                // TODO: Implement Logic
+                while (offset < 1) {
+                    read(cardChannel, apdu, false, offset)
+                    offset++
+                }
+            } else {
+                read(cardChannel, apdu, getCardVersion)
+            }
+    }
 
-            Log.e(TAG, "Reading APDU ${apdu.name}, getCardVersion value: ${getCardVersion}, command: ${readCommand}")
+    private fun read(cardChannel: CardChannel, 
+        apdu: ApduCommand, 
+        getCardVersion: Boolean = false,
+        offset: Int = 0
+        ) {
+            try {
+                var p1: String = String.format("%02d", offset)
+                var readCommand = "00 B0 ${p1} 00 ${hexToBytesHelper.byteLength(apdu)}"
 
-            val commandAPDU = CommandAPDU(
-                hexToBytesHelper.hexStringToByteArray(readCommand)
-            )
-            val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
-            val responseData: ByteArray = response.data
-            val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
+                Log.e(TAG, "Reading APDU ${apdu.name}, getCardVersion value: ${getCardVersion}, command: ${readCommand}")
 
-            val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
-            val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
+                val commandAPDU = CommandAPDU(
+                    hexToBytesHelper.hexStringToByteArray(readCommand)
+                )
+                val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
+                val responseData: ByteArray = response.data
+                val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
 
-            if (sw1 != null && sw2 != null && sw1 == 0x90 && sw2 == 0x00) {
-                // The response indicates success (SW1 = 0x90, SW2 = 0x00).
-                // Process responseData accordingly.
-                Log.e(TAG, "APDU Read name was ${apdu.name}")
-                Log.e(TAG, "APDU Read sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
-                Log.e(TAG, "APDU Read Response data size: ${responseData.size}")
-                Log.e(TAG, "APDU Read Response Hex: ${responseHex}")
-                if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
-                    setCardStructureVersionAndNoOfVariables(responseHex)
-                } else {
-                    addToC1BFile(responseHex, apdu)
+                val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
+                val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
+
+                if (sw1 != null && sw2 != null && sw1 == 0x90 && sw2 == 0x00) {
+                    // The response indicates success (SW1 = 0x90, SW2 = 0x00).
+                    // Process responseData accordingly.
+                    Log.e(TAG, "APDU Read name was ${apdu.name}")
+                    Log.e(TAG, "APDU Read sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
+                    Log.e(TAG, "APDU Read Response data size: ${responseData.size}")
+                    Log.e(TAG, "APDU Read Response Hex: ${responseHex}")
+                    if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
+                        setCardStructureVersionAndNoOfVariables(responseHex)
+                    } else {
+                        addToC1BFile(responseHex, apdu)
+                    }
+                    
+                } else if (sw1 != null && sw1 == 0x6C || sw1 == 0x67) {
+                    val remainingBytes = sw2
+                    Log.e(TAG, "Remaining Read bytes: $remainingBytes and SW1 was $sw1")
+                    // TODO: Create read loop for remaining bytes
+                }
+                else {
+                    // An error occurred. Handle the error based on the SW1 and SW2 values.
+                    Log.e(TAG, "Unable to Read APDU ${apdu.name} sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
+                    // TODO: Handle the APDU error
                 }
                 
-            } else if (sw1 != null && sw1 == 0x6C) {
-                val remainingBytes = sw2
-                Log.e(TAG, "Remaining Read bytes: $remainingBytes")
+            } catch (e: CardException) {
+                Log.e(TAG, "Unable to read card")
+                e.printStackTrace()
+                // TODO: handle error
             }
-            else {
-                // An error occurred. Handle the error based on the SW1 and SW2 values.
-                Log.e(TAG, "Unable to Read APDU ${apdu.name} sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
-                // TODO: Handle the APDU error
-            }
-            
-        } catch (e: CardException) {
-            Log.e(TAG, "Unable to read card")
-            e.printStackTrace()
-            // TODO: handle error
-        }
     }
 
     private fun getCardVersion(cardChannel: CardChannel, testGen1: Boolean = false) {
@@ -293,15 +313,15 @@ class SmartCardReader
 
             setCardGenerationAndVersion(generationHex, versionHex)
 
-            noOfEventsPerType = noOfEventsPerTypeHex.toInt(16)
-            noOfFaultsPerType = noOfFaultsPerTypeHex.toInt(16)
-            noOfCardVehicleRecords = noOfCardVehicleRecordsHex.toInt(16)
-            noOfCardPlaceRecords = noOfCardPlaceRecordsHex.toInt(16)
+            noOfVarModel.noOfEventsPerType = noOfEventsPerTypeHex.toInt(16)
+            noOfVarModel.noOfFaultsPerType = noOfFaultsPerTypeHex.toInt(16)
+            noOfVarModel.noOfCardVehicleRecords = noOfCardVehicleRecordsHex.toInt(16)
+            noOfVarModel.noOfCardPlaceRecords = noOfCardPlaceRecordsHex.toInt(16)
 
-            Log.e(TAG, "Card Structure noOfEventsPerType is: $noOfEventsPerType")
-            Log.e(TAG, "Card Structure noOfFaultsPerType is: $noOfFaultsPerType")
-            Log.e(TAG, "Card Structure noOfCardVehicleRecords is: $noOfCardVehicleRecords")
-            Log.e(TAG, "Card Structure noOfCardPlaceRecords is: $noOfCardPlaceRecords")
+            Log.e(TAG, "Card Structure noOfEventsPerType is: ${noOfVarModel.noOfEventsPerType}")
+            Log.e(TAG, "Card Structure noOfFaultsPerType is: ${noOfVarModel.noOfFaultsPerType}")
+            Log.e(TAG, "Card Structure noOfCardVehicleRecords is: ${noOfVarModel.noOfCardVehicleRecords}")
+            Log.e(TAG, "Card Structure noOfCardPlaceRecords is: ${noOfVarModel.noOfCardPlaceRecords}")
 
         } else if (hexValues.size >= 3) {
             val generationHex = hexValues[1]
@@ -331,6 +351,7 @@ class SmartCardReader
     private fun addToC1BFile(hexString: String, apdu: ApduCommand) {
         Log.e(TAG, "Hex string for ${apdu.name} was ${hexString}")
         currentReadStepStatusNotifier.updateState(uploadSteps++, channel)
+        // TODO: Add to file
     }
 
     private fun performHashCommand(cardChannel: CardChannel) {
@@ -385,10 +406,7 @@ class SmartCardReader
         }
         uploadSteps = 0
         cardStructureVersion = null
-        noOfCardPlaceRecords = 0
-        noOfCardVehicleRecords = 0
-        noOfEventsPerType = 0
-        noOfFaultsPerType = 0
+        noOfVarModel = NoOfVarModel()
         deviceConnectionStatusNotifier.updateState("DISCONNECTED", channel)
         cardConnectionStateNotifier.updateState("DISCONNECTED", channel)
     }

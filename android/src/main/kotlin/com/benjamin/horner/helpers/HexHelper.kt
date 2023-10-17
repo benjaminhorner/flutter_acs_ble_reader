@@ -64,7 +64,7 @@ class HexHelper {
         str = dec.toChar().toString()
 
         if (dec < 32 || dec in 127..160)
-            str = "" // n/a"
+            str = ""
         return str
     }
 
@@ -79,12 +79,11 @@ class HexHelper {
         return result.toString()
     }
 
-    fun byteLength(apdu: ApduCommand, offset: Int): String {
+    fun byteLength(apdu: ApduCommand): String {
         if (apdu.lengthMin == apdu.lengthMax) {
             return padHex(Integer.toHexString(apdu.lengthMin))
         } else {
-            // TODO: offset by remaining bytes
-            return padHex(Integer.toHexString(apdu.lengthMin))
+            return padHex(Integer.toHexString(255))
         }
     }
 

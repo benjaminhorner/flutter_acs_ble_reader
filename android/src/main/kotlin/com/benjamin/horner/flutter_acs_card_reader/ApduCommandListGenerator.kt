@@ -2,6 +2,7 @@ package com.benjamin.horner.flutter_acs_card_reader
 
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
+import com.benjamin.horner.flutter_acs_card_reader.NoOfVarModel
 
 // JavaX
 import javax.smartcardio.CardChannel
@@ -15,19 +16,22 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 3F 00",
             name = "MF",
-            isEF = false
+            isEF = false,
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 00 02",
             name = "EF_ICC",
             lengthMin = 25,
-            lengthMax = 25
+            lengthMax = 25,
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 00 05",
             name = "EF_IC",
             lengthMin = 8,
-            lengthMax = 8
+            lengthMax = 8,
+            needsSignature = false
         )
     )
     
@@ -35,7 +39,8 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_DF} FF 54 41 43 48 4F",
             name = "DF_TACHOGRAPH",
-            isEF = false
+            isEF = false,
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
@@ -49,7 +54,8 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_DF} FF 53 4D 52 44 54",
             name = "DF_TACHOGRAPH_G2",
-            isEF = false
+            isEF = false,
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
@@ -92,32 +98,32 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
             name = "EF_EVENTS_DATA",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 864,
+            lengthMax = 1728
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
             name = "EF_FAULTS_DATA",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 576,
+            lengthMax = 1152
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
             name = "EF_DRIVER_ACTIVITY_DATA",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 5548,
+            lengthMax = 13780
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
             name = "EF_VEHICULES_USED",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 2606,
+            lengthMax = 6202
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
             name = "EF_PLACES",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 841,
+            lengthMax = 1121
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
@@ -142,14 +148,14 @@ class ApduCommandListGenerator {
             name = "EF_CARD_CERTIFICATE",
             lengthMin = 194,
             lengthMax = 194,
-            needsSignature = true
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
             name = "EF_CA_CERTIFICATE",
             lengthMin = 194,
             lengthMax = 194,
-            needsSignature = true
+            needsSignature = false
         )
     )
 
@@ -186,32 +192,32 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
             name = "EF_EVENTS_DATA",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 1584,
+            lengthMax = 3168
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
             name = "EF_FAULTS_DATA",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 576,
+            lengthMax = 1152
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
             name = "EF_DRIVER_ACTIVITY_DATA",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 5548,
+            lengthMax = 13780
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
             name = "EF_VEHICULES_USED",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 4024,
+            lengthMax = 5602
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
             name = "EF_PLACES",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 1766,
+            lengthMax = 2354
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
@@ -228,48 +234,48 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 22",
             name = "EF_SPECIFIC_CONDITIONS",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 282,
+            lengthMax = 562
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
             name = "EF_CARD_CERTIFICATE",
-            lengthMin = 0,
-            lengthMax = 0,
-            needsSignature = true
+            lengthMin = 204,
+            lengthMax = 341,
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
             name = "EF_CA_CERTIFICATE",
-            lengthMin = 0,
-            lengthMax = 0,
-            needsSignature = true
+            lengthMin = 204,
+            lengthMax = 341,
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 23",
             name = "EF_VEHICULEUNITS_USED",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 842,
+            lengthMax = 2002
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 24",
             name = "EF_GNSS_PLACES",
-            lengthMin = 0,
-            lengthMax = 0
+            lengthMin = 3782,
+            lengthMax = 5042
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 01",
             name = "EF_CARDSIGNCERTIFICATE",
-            lengthMin = 0,
-            lengthMax = 0,
-            needsSignature = true
+            lengthMin = 204,
+            lengthMax = 341,
+            needsSignature = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 09",
             name = "EF_LINK_CERTIFICATE",
-            lengthMin = 0,
-            lengthMax = 0,
-            needsSignature = true
+            lengthMin = 204,
+            lengthMax = 341,
+            needsSignature = false
         ),
     )
 
@@ -283,7 +289,7 @@ class ApduCommandListGenerator {
         return commonApduCommandList.plus(cardGen2List)
     }
 
-    fun makeList(cardGen: CardGen): List<ApduCommand> {
+    fun makeList(cardGen: CardGen, noOfVarModel: NoOfVarModel): List<ApduCommand> {
         when(cardGen) {
             CardGen.GEN1 -> return commonApduCommandList.plus(apduList)
             CardGen.GEN2 -> return commonApduCommandList.plus(apduTG2List)
