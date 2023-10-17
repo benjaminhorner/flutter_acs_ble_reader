@@ -11,6 +11,9 @@ import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommandListGenerator
 import com.benjamin.horner.flutter_acs_card_reader.NoOfVarModel
+import com.benjamin.horner.flutter_acs_card_reader.APDUResponseHelper
+import com.benjamin.horner.flutter_acs_card_reader.APDUSelectResponseEnum
+import com.benjamin.horner.flutter_acs_card_reader.APDUReadResponseEnum
 
 /// Flutter
 import io.flutter.plugin.common.MethodChannel
@@ -46,6 +49,7 @@ private val cardConnectionStateNotifier = CardConnectionStateNotifier()
 private val totalReadStepsStatusNotifier = TotalReadStepsStatusNotifier()
 private val currentReadStepStatusNotifier = CurrentReadStepStatusNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
+private val aPDUResponseHelper = APDUResponseHelper()
 
 class SmartCardReader
     (private val channel: MethodChannel) {
@@ -151,7 +155,7 @@ class SmartCardReader
 
             totalReadStepsStatusNotifier.updateState(apduList.size - 1, channel)
 
-            selectAndRead(cardChannel, apduList)
+            select(cardChannel, apduList)
             
             disconnectCard(channel, card)
             
@@ -163,47 +167,98 @@ class SmartCardReader
         }
     }
 
-    private fun selectAndRead(cardChannel: CardChannel, apduList: List<ApduCommand>, getCardVersion: Boolean = false) {
-        try {
-            for (apdu in apduList) {
-                Log.e(TAG, "Selecting APDU ${apdu.name} with command ${apdu.selectCommand}")
+    private fun handleSelectAPDUResponse(
+        response: ResponseAPDU,
+        status: APDUSelectResponseEnum,
+        apdu: ApduCommand,
+        cardChannel: CardChannel,
+        getCardVersion: Boolean,
+        ) {
+            val responseData: ByteArray = response.data
+            val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
+            val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
-                val commandAPDU = CommandAPDU(
-                    hexToBytesHelper.hexStringToByteArray(apdu.selectCommand)
-                )
-                val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
-                val responseData: ByteArray = response.data
-                val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
-                val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
-
-                val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
-                val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
-
-                if (sw1 != null && sw2 != null && sw1 == 0x90 && sw2 == 0x00) {
-                    // The response indicates success (SW1 = 0x90, SW2 = 0x00).
-                    // Process responseData accordingly.
-                    if (apdu.isEF) {
-                        performHashCommand(cardChannel)
-                        loopOrRead(cardChannel, apdu, getCardVersion)
-                    }
-                } else if (sw1 != null && sw1 == 0x6C) {
-                    val remainingBytes = sw2
-                    Log.e(TAG, "Remaining bytes: $remainingBytes")
+            if (status == APDUSelectResponseEnum.SUCCESS) {
+                if (apdu.isEF) {
+                    performHashCommand(cardChannel)
+                    loopOrRead(cardChannel, apdu, getCardVersion)
                 }
-                else {
-                    // An error occurred. Handle the error based on the SW1 and SW2 values.
-                    Log.e(TAG, "Unable to transmit APDU. sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
-                    // TODO: Handle the APDU error
-                    throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
-                    break
+            } 
+            else {
+                Log.e(TAG, "Unable to transmit APDU. sw1 was $status")
+                throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
+            }
+    }
+
+    private fun select(
+        cardChannel: CardChannel,
+        apduList: List<ApduCommand>,
+        getCardVersion: Boolean = false,
+        ) {
+            try {
+                for (apdu in apduList) {
+                    Log.e(TAG, "Selecting APDU ${apdu.name} with command ${apdu.selectCommand}")
+
+                    val commandAPDU = CommandAPDU(
+                        hexToBytesHelper.hexStringToByteArray(apdu.selectCommand)
+                    )
+                    val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
+                    val sw1: Int? = response.getSW1()
+                    val sw2: Int? = response.getSW2()
+
+                    if (sw1 == null && sw2 == null) {
+                        Log.e(TAG, "Unable to transmit APDU. sw1 was $sw1 and sw2 was $sw2")
+                        throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
+                        break
+                    } else {
+                        handleSelectAPDUResponse(
+                            response, 
+                            aPDUResponseHelper.selectResponseIntToAPDUReadResponse(sw1),
+                            apdu,
+                            cardChannel,
+                            getCardVersion,
+                        )
+                    }
                 }
             }
-        }
-        catch(e: Exception) {
-            Log.e(TAG, "Unable to select from card")
-            e.printStackTrace()
-            throw e
-        }
+            catch(e: Exception) {
+                Log.e(TAG, "Unable to select from card")
+                e.printStackTrace()
+                throw e
+            }
+    }
+
+    private fun handleReadAPDUResponse(
+        response: ResponseAPDU,
+        status: APDUReadResponseEnum,
+        apdu: ApduCommand,
+        cardChannel: CardChannel,
+        getCardVersion: Boolean,
+        remainingBytes: Int,
+        ) {
+            val responseData: ByteArray = response.data
+            val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
+            val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
+
+            if (status == APDUReadResponseEnum.SUCCESS) {
+                Log.e(TAG, "APDU Read name was ${apdu.name}")
+                Log.e(TAG, "APDU Read Response data size: ${responseData.size}")
+                Log.e(TAG, "APDU Read Response Hex: ${responseHex}")
+                if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
+                    setCardStructureVersionAndNoOfVariables(responseHex)
+                } else {
+                    addToC1BFile(responseHex, apdu)
+                }
+            } else if (
+                status == APDUReadResponseEnum.P1_LENGTH_GREATER_THAN_EF || 
+                status == APDUReadResponseEnum.P1_PLUS_LENGTH_GREATER_THAN_EF) {
+                    Log.e(TAG, "Remaining Read bytes: $remainingBytes and SW1 was $status")
+                    // TODO: Create read loop for remaining bytes
+            }
+            else {
+                Log.e(TAG, "Unable to Read APDU ${apdu.name} sw1 was $status and sw2 was $remainingBytes")
+                throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
+            }
     }
 
     private fun loopOrRead(
@@ -238,47 +293,32 @@ class SmartCardReader
                     hexToBytesHelper.hexStringToByteArray(readCommand)
                 )
                 val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
-                val responseData: ByteArray = response.data
-                val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
+                val sw1: Int? = response.getSW1()
+                val sw2: Int? = response.getSW2()
 
-                val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
-                val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
-
-                if (sw1 != null && sw2 != null && sw1 == 0x90 && sw2 == 0x00) {
-                    // The response indicates success (SW1 = 0x90, SW2 = 0x00).
-                    // Process responseData accordingly.
-                    Log.e(TAG, "APDU Read name was ${apdu.name}")
-                    Log.e(TAG, "APDU Read sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
-                    Log.e(TAG, "APDU Read Response data size: ${responseData.size}")
-                    Log.e(TAG, "APDU Read Response Hex: ${responseHex}")
-                    if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
-                        setCardStructureVersionAndNoOfVariables(responseHex)
-                    } else {
-                        addToC1BFile(responseHex, apdu)
-                    }
-                    
-                } else if (sw1 != null && sw1 == 0x6C || sw1 == 0x67) {
-                    val remainingBytes = sw2
-                    Log.e(TAG, "Remaining Read bytes: $remainingBytes and SW1 was $sw1")
-                    // TODO: Create read loop for remaining bytes
+                if (sw1 == null && sw2 == null) {
+                    Log.e(TAG, "Unable to read card because sw1 and sw2 are NULL")
+                    throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
+                } else {
+                    handleReadAPDUResponse(
+                        response,
+                        aPDUResponseHelper.readResponseIntToAPDUReadResponse(sw1),
+                        apdu,
+                        cardChannel,
+                        getCardVersion,
+                        sw2!!,
+                    )
                 }
-                else {
-                    // An error occurred. Handle the error based on the SW1 and SW2 values.
-                    Log.e(TAG, "Unable to Read APDU ${apdu.name} sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
-                    // TODO: Handle the APDU error
-                }
-                
             } catch (e: CardException) {
                 Log.e(TAG, "Unable to read card")
-                e.printStackTrace()
-                // TODO: handle error
+                throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
             }
     }
 
     private fun getCardVersion(cardChannel: CardChannel, testGen1: Boolean = false) {
         try {
             val apduList: List<ApduCommand> = if (testGen1) apduCommandListGenerator.cardVersionCommandList() else apduCommandListGenerator.cardVersionGen2CommandList()
-            selectAndRead(cardChannel, apduList, true)
+            select(cardChannel, apduList, true)
         }
         catch(e: Exception) {
             Log.e(TAG, "Unable to read card: ${e.message}")
