@@ -24,14 +24,16 @@ class ApduCommandListGenerator {
             name = "EF_ICC",
             lengthMin = 25,
             lengthMax = 25,
-            needsSignature = false
+            needsSignature = false,
+            needsHash = false
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 00 05",
             name = "EF_IC",
             lengthMin = 8,
             lengthMax = 8,
-            needsSignature = false
+            needsSignature = false,
+            needsHash = false
         )
     )
     

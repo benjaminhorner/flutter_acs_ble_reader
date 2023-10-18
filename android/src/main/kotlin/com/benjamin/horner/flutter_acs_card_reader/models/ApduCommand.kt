@@ -10,5 +10,6 @@ data class ApduCommand (
     var lengthMax: Int = 0,
     var cardGen: CardGen = CardGen.GEN1,
     var needsSignature: Boolean = true,
-    var isEF: Boolean = true
+    var isEF: Boolean = true,
+    var needsHash: Boolean = true
 )

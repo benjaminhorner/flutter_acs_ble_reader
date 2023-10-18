@@ -14,6 +14,9 @@ import com.benjamin.horner.flutter_acs_card_reader.NoOfVarModel
 import com.benjamin.horner.flutter_acs_card_reader.APDUResponseHelper
 import com.benjamin.horner.flutter_acs_card_reader.APDUSelectResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.APDUReadResponseEnum
+import com.benjamin.horner.flutter_acs_card_reader.APDUHashResponseEnum
+import com.benjamin.horner.flutter_acs_card_reader.APDUSignResponseEnum
+import com.benjamin.horner.flutter_acs_card_reader.ApduData
 
 /// Flutter
 import io.flutter.plugin.common.MethodChannel
@@ -42,6 +45,10 @@ import javax.smartcardio.ATR
 
 private val TAG = "SmartCardReader"
 private val UNABLE_TO_TRANSMIT_APDU_EXCEPTION = "Unable to transmit APDU"
+private val UNABLE_TO_CREATE_HASH_EXCEPTION = "Unable to Create Hash"
+private val UNABLE_TO_PERFORM_SELECTION = "Unable to select from card"
+private val UNABLE_TO_CONNECT_TO_CARD = "Unable to connect to card"
+private val HEX_DOES_NOT_CONTAIN_ENOUGH_BYTES = "Hex string does not contain enough bytes." 
 private val deviceConnectionStatusNotifier = DeviceConnectionStatusNotifier()
 private val deviceNotifier = DeviceNotifier()
 private val hexToBytesHelper = HexHelper()
@@ -62,6 +69,8 @@ class SmartCardReader
     private var cardStructureVersion: CardGen? = null
     private var noOfVarModel: NoOfVarModel = NoOfVarModel()
     private var uploadSteps: Int = 0
+    private var c1BFileData: String = ""
+    private var treatedAPDU = ApduData()
 
     fun connectToDevice(
         activity: Activity, 
@@ -96,8 +105,6 @@ class SmartCardReader
     private fun startScan(timeoutSeconds: Int) {
         // TODO: Check if a Terminal is already connected
         // If the terminal is already connected, break and read from the connected terminal
-        Log.e(TAG, "Scanning for devices…")
-
         if (mManager != null) {
             mManager!!.startScan(cardTerminalType, object : BluetoothTerminalManager.TerminalScanCallback {
                 override fun onScan(terminal: CardTerminal) {
@@ -138,9 +145,6 @@ class SmartCardReader
             val atrBytes: ByteArray = atr.bytes
             val atrHex: String = hexToBytesHelper.byteArrayToHexString(atrBytes)
 
-            Log.e(TAG, "ATR is: ${atrHex}")
-            Log.e(TAG, "Established connection to card!")
-
             cardConnectionStateNotifier.updateState("CONNECTED", channel)
 
             cardChannel = card.basicChannel
@@ -148,8 +152,6 @@ class SmartCardReader
             if (cardStructureVersion == null) {
                 getCardVersion(cardChannel)
             }
-
-            Log.e(TAG, "Card version is: ${cardStructureVersion}")
 
             val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardStructureVersion!!, noOfVarModel)
 
@@ -159,12 +161,16 @@ class SmartCardReader
             
             disconnectCard(channel, card)
             
-        } catch (e: CardException) {
-            Log.e(TAG, "Unable to connect to card")
-            disconnectCard(channel)
-            e.printStackTrace()
-            // TODO: Handle error
+        } catch (e: Exception) {
+            handleError(e)
         }
+    }
+
+    private fun handleError(e: Exception) {
+        Log.e(TAG, "${e.message}")
+        disconnectCard(channel)
+        // TODO: Handle error
+        // Send error back to Dart code
     }
 
     private fun handleSelectAPDUResponse(
@@ -174,19 +180,23 @@ class SmartCardReader
         cardChannel: CardChannel,
         getCardVersion: Boolean,
         ) {
-            val responseData: ByteArray = response.data
-            val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
-            val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
+            try {
+                val responseData: ByteArray = response.data
+                val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
+                val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
-            if (status == APDUSelectResponseEnum.SUCCESS) {
-                if (apdu.isEF) {
-                    performHashCommand(cardChannel)
-                    loopOrRead(cardChannel, apdu, getCardVersion)
+                if (status != APDUSelectResponseEnum.SUCCESS) {
+                    throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
                 }
-            } 
-            else {
-                Log.e(TAG, "Unable to transmit APDU. sw1 was $status")
-                throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
+                else if (apdu.isEF && apdu.needsHash) {
+                    performHashCommand(cardChannel)
+                    read(cardChannel, apdu, getCardVersion)
+                } else if (apdu.isEF) {
+                    read(cardChannel, apdu, getCardVersion)
+                }
+            }
+            catch (e: Exception) {
+                throw e
             }
     }
 
@@ -207,8 +217,7 @@ class SmartCardReader
                     val sw2: Int? = response.getSW2()
 
                     if (sw1 == null && sw2 == null) {
-                        Log.e(TAG, "Unable to transmit APDU. sw1 was $sw1 and sw2 was $sw2")
-                        throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
+                        throw Exception(UNABLE_TO_PERFORM_SELECTION)
                         break
                     } else {
                         handleSelectAPDUResponse(
@@ -221,9 +230,7 @@ class SmartCardReader
                     }
                 }
             }
-            catch(e: Exception) {
-                Log.e(TAG, "Unable to select from card")
-                e.printStackTrace()
+            catch (e: Exception) {
                 throw e
             }
     }
@@ -256,25 +263,7 @@ class SmartCardReader
                     // TODO: Create read loop for remaining bytes
             }
             else {
-                Log.e(TAG, "Unable to Read APDU ${apdu.name} sw1 was $status and sw2 was $remainingBytes")
                 throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
-            }
-    }
-
-    private fun loopOrRead(
-        cardChannel: CardChannel, 
-        apdu: ApduCommand,
-        getCardVersion: Boolean = false
-        ) {
-            if (apdu.lengthMin > 255) {
-                var offset = 0
-                // TODO: Implement Logic
-                while (offset < 1) {
-                    read(cardChannel, apdu, false, offset)
-                    offset++
-                }
-            } else {
-                read(cardChannel, apdu, getCardVersion)
             }
     }
 
@@ -309,9 +298,8 @@ class SmartCardReader
                         sw2!!,
                     )
                 }
-            } catch (e: CardException) {
-                Log.e(TAG, "Unable to read card")
-                throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
+            } catch (e: Exception) {
+                throw e
             }
     }
 
@@ -320,13 +308,11 @@ class SmartCardReader
             val apduList: List<ApduCommand> = if (testGen1) apduCommandListGenerator.cardVersionCommandList() else apduCommandListGenerator.cardVersionGen2CommandList()
             select(cardChannel, apduList, true)
         }
-        catch(e: Exception) {
-            Log.e(TAG, "Unable to read card: ${e.message}")
+        catch (e: Exception) {
             if (e.message == UNABLE_TO_TRANSMIT_APDU_EXCEPTION) {
                 getCardVersion(cardChannel, true)
             }
             else {
-                e.printStackTrace()
                 throw e
             }
         }
@@ -374,7 +360,7 @@ class SmartCardReader
             setCardGenerationAndVersion(generationHex, versionHex)
         }
         else {
-            Log.e(TAG, "Hex string does not contain enough bytes.")
+            throw Exception(HEX_DOES_NOT_CONTAIN_ENOUGH_BYTES)
         }
     }
 
@@ -389,9 +375,25 @@ class SmartCardReader
     }
 
     private fun addToC1BFile(hexString: String, apdu: ApduCommand) {
-        Log.e(TAG, "Hex string for ${apdu.name} was ${hexString}")
         currentReadStepStatusNotifier.updateState(uploadSteps++, channel)
-        // TODO: Add to file
+        if (apdu.name == treatedAPDU.name) {
+            Log.e(TAG, "Add Data to ${treatedAPDU.name}")
+            treatedAPDU.data += hexString
+        } else {
+            Log.e(TAG, "Send Data from ${treatedAPDU.name}")
+            treatedAPDU.name = apdu.name
+            treatedAPDU.data = hexString
+            c1BFileData += treatedAPDU.data
+        }
+        Log.e(TAG, "c1BFileData is $c1BFileData")
+    }
+
+    private fun handleHashAPDUResponse(
+        status: APDUHashResponseEnum
+        ) {
+            if (status != APDUHashResponseEnum.SUCCESS) {
+                throw Exception(UNABLE_TO_CREATE_HASH_EXCEPTION)
+            }
     }
 
     private fun performHashCommand(cardChannel: CardChannel) {
@@ -404,30 +406,20 @@ class SmartCardReader
                 hexToBytesHelper.hexStringToByteArray(HASH_COMMAND)
             )
             
-            Log.e(TAG, "Perform hash command")
-
             val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
 
-            val sw1: Int? = response.getSW1() // Get the SW1 part of the status word.
-            val sw2: Int? = response.getSW2() // Get the SW2 part of the status word.
+            val sw1: Int? = response.getSW1()
+            val sw2: Int? = response.getSW2()
 
-            if (sw1 != null && sw2 != null && sw1 == 0x90 && sw2 == 0x00) {
-                // The response indicates success (SW1 = 0x90, SW2 = 0x00).
-                // Process responseData accordingly.
-                Log.e(TAG, "Hash command sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
-            } else if (sw1 != null && sw1 == 0x6C) {
-                val remainingBytes = sw2
-                Log.e(TAG, "Remaining Read bytes: $remainingBytes")
-            }
-            else {
-                // An error occurred. Handle the error based on the SW1 and SW2 values.
-                Log.e(TAG, "Unable to make hash command sw1 was ${Integer.toHexString(sw1!!)} and sw2 was ${Integer.toHexString(sw2!!)}")
-                // TODO: Handle the APDU error
+            if (sw1 == null && sw2 == null) {
+
+            } else {
+                handleHashAPDUResponse(
+                    aPDUResponseHelper.hashResponseIntToAPDUReadResponse(sw1!!)
+                )
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to perform Hash command on card")
-            e.printStackTrace()
             throw e
         }
     }
@@ -444,6 +436,8 @@ class SmartCardReader
         if (card != null) {
             card.disconnect(true)
         }
+        treatedAPDU = ApduData()
+        c1BFileData = ""
         uploadSteps = 0
         cardStructureVersion = null
         noOfVarModel = NoOfVarModel()
