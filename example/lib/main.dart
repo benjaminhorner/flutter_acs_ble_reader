@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 import 'package:flutter_acs_card_reader/flutter_acs_card_reader.dart';
 
 void main() {
@@ -15,15 +16,31 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final User user = User.fromJson(
+    {
+      "conducteur": {
+        "nom": "HORNER",
+        "prenom": "Benjamin",
+        "tel": "",
+        "email": "b.e.horner@gmail.com",
+        "carte": "10000000074810"
+      },
+      "agence": {"ID": 1, "emails": "ventes@sogestmatic.com"},
+      "estConnecte": true
+    },
+  );
   StreamSubscription<DeviceSearchState?>? _deviceSearchStateStream;
   StreamSubscription<DeviceConnectionState?>? _deviceConnectionStateStream;
   StreamSubscription<BluetoothDevice?>? _deviceFoundEventStream;
-  String _deviceActivity = "";
-  String _deviceConnectionState = "";
+  BluetoothAdapterState _bluetoothState = BluetoothAdapterState.unknown;
+  DeviceSearchState _deviceActivity = DeviceSearchState.stopped;
+  DeviceConnectionState _deviceConnectionState = DeviceConnectionState.pending;
   String _deviceName = "";
-  String _locationGrantedStatus = "UNKNOWN";
-  final String _cardActivity = "";
   bool _isScanning = false;
+  CardConnectionState _cardConnectionState = CardConnectionState.disconnected;
+  int _totalReadSteps = 0;
+  int _currentReadStep = 0;
+  DataTransferState _dataTransferState = DataTransferState.pending;
 
   @override
   void initState() {
@@ -40,29 +57,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _startScan() {
-    FlutterAcsCardReader.scanSmartCardDevices();
+    FlutterAcsCardReader.scanSmartCardDevices(user);
   }
 
   void _stopScan() {
     FlutterAcsCardReader.stopScanningSmartCardDevices();
-  }
-
-  void _readCard(BluetoothDevice device) async {
-    User user = User.fromJson({
-      "conducteur": {
-        "nom": "HORNER",
-        "prenom": "Benjamin",
-        "tel": "",
-        "email": "b.e.horner@gmail.com",
-        "carte": "10000000074810"
-      },
-      "agence": {"ID": 1, "emails": "ventes@sogestmatic.com"},
-      "estConnecte": true
-    });
-    await FlutterAcsCardReader.readSmartCard(
-      device,
-      user: user,
-    );
   }
 
   void _registerListeners() {
@@ -73,7 +72,7 @@ class _MyAppState extends State<MyApp> {
         .listen((DeviceSearchState state) {
       setState(() {
         _isScanning = state == DeviceSearchState.searching ? true : false;
-        _deviceActivity = state.toString();
+        _deviceActivity = state;
       });
     });
 
@@ -82,24 +81,53 @@ class _MyAppState extends State<MyApp> {
         .deviceConnectionStateStream
         .listen((DeviceConnectionState state) {
       setState(() {
-        _deviceConnectionState = state.toString();
+        _deviceConnectionState = state;
       });
     });
 
     // Listen to Location Status
-    FlutterAcsCardReader.bluetoothStatusStream.listen((BluetoothStatus status) {
+    FlutterAcsCardReader.bluetoothStatusStream
+        .listen((BluetoothAdapterState state) {
       setState(() {
-        _locationGrantedStatus = status.toString();
+        _bluetoothState = state;
       });
     });
 
     // Listen to Found devices
-    FlutterAcsCardReader.deviceFoundEventStream
-        .listen((BluetoothDevice device) {
+    FlutterAcsCardReader.deviceFoundEventStream.listen((CardTerminal terminal) {
       setState(() {
-        _deviceName = device.localName;
+        _deviceName = terminal.name ?? "NO NAME";
       });
-      _readCard(device);
+    });
+
+    // Listen to Card connection State
+    FlutterAcsCardReader.cardConnectionStateStream
+        .listen((CardConnectionState state) {
+      setState(() {
+        _cardConnectionState = state;
+      });
+    });
+
+    // Listen to Read Steps
+    FlutterAcsCardReader.totalReadStepsStateStream.listen((int state) {
+      setState(() {
+        _totalReadSteps = state;
+      });
+    });
+
+    // Listen to Read Steps
+    FlutterAcsCardReader.currentReadStepStateStream.listen((int state) {
+      setState(() {
+        _currentReadStep = state;
+      });
+    });
+
+    // Listen to Data Transfer State
+    FlutterAcsCardReader.dataTransferStateStream
+        .listen((DataTransferState state) {
+      setState(() {
+        _dataTransferState = state;
+      });
     });
   }
 
@@ -114,7 +142,7 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Location status: $_locationGrantedStatus"),
+              Text("Location status: $_bluetoothState"),
               const SizedBox(
                 height: 8,
               ),
@@ -130,12 +158,26 @@ class _MyAppState extends State<MyApp> {
               const SizedBox(
                 height: 8,
               ),
-              Text("Card state: $_cardActivity"),
+              Text("Card state: $_cardConnectionState"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text("Data Transfer state: $_dataTransferState"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text(
+                  "Reading APDU Progress: ${_totalReadSteps > 0 ? ((_currentReadStep / _totalReadSteps) * 100).toInt() : 0}%"),
               const SizedBox(
                 height: 8,
               ),
               ElevatedButton(
-                onPressed: _isScanning ? _stopScan : _startScan,
+                onPressed:
+                    _deviceConnectionState == DeviceConnectionState.connected
+                        ? null
+                        : _isScanning
+                            ? _stopScan
+                            : _startScan,
                 child: Text(_isScanning ? "Stop Scan" : "Start Scan"),
               ),
             ],

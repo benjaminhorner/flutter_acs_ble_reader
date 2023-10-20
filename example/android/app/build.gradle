@@ -45,7 +45,7 @@ android {
 
     defaultConfig {
         applicationId "com.benjamin.horner.flutter_acs_card_reader_example"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 // Import
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_acs_card_reader/enums/bluetooth_support.enum.dart';
+import 'package:flutter_acs_card_reader/enums/card_connection_state.enum.dart';
+import 'package:flutter_acs_card_reader/enums/card_terminal_type.enum.dart';
+import 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
+import 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 import 'enums/device_search_state.enum.dart';
 import 'models/user.model.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -13,11 +17,12 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 export 'enums/card_connection_state.enum.dart';
 export 'enums/device_search_state.enum.dart';
 export 'package:flutter_blue_plus/flutter_blue_plus.dart';
-export 'package:flutter_acs_card_reader/enums/bluetooth_support.enum.dart';
 export 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 export 'models/user.model.dart';
+export 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 
 class FlutterAcsCardReader {
+  static Timer? _timeOutTimer;
   static const MethodChannel _channel =
       MethodChannel('flutter_acs_card_reader');
 
@@ -30,27 +35,47 @@ class FlutterAcsCardReader {
   static final StreamController<DeviceConnectionState>
       _deviceConnectionStateController =
       StreamController<DeviceConnectionState>.broadcast();
-  static final StreamController<BluetoothDevice> _deviceFoundEventController =
-      StreamController<BluetoothDevice>.broadcast();
-  static final StreamController<BluetoothStatus> _bluetoothStatusController =
-      StreamController<BluetoothStatus>.broadcast();
+  static final StreamController<CardTerminal> _deviceFoundEventController =
+      StreamController<CardTerminal>.broadcast();
+  static final StreamController<BluetoothAdapterState>
+      _bluetoothStatusController =
+      StreamController<BluetoothAdapterState>.broadcast();
+  static final StreamController<CardConnectionState>
+      _cardConnectionStateEventController =
+      StreamController<CardConnectionState>.broadcast();
+  static final StreamController<int> _totalReadStepsStateEventController =
+      StreamController<int>.broadcast();
+  static final StreamController<int> _currentReadStepStateEventController =
+      StreamController<int>.broadcast();
+  static final StreamController<DataTransferState>
+      _dataTransferStateEventController =
+      StreamController<DataTransferState>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
       _deviceSearchStateController.stream;
   static Stream<DeviceConnectionState> get deviceConnectionStateStream =>
       _deviceConnectionStateController.stream;
-  static Stream<BluetoothDevice> get deviceFoundEventStream =>
+  static Stream<CardTerminal> get deviceFoundEventStream =>
       _deviceFoundEventController.stream;
-  static Stream<BluetoothStatus> get bluetoothStatusStream =>
+  static Stream<BluetoothAdapterState> get bluetoothStatusStream =>
       _bluetoothStatusController.stream;
+  static Stream<CardConnectionState> get cardConnectionStateStream =>
+      _cardConnectionStateEventController.stream;
+  static Stream<int> get totalReadStepsStateStream =>
+      _totalReadStepsStateEventController.stream;
+  static Stream<int> get currentReadStepStateStream =>
+      _currentReadStepStateEventController.stream;
+  static Stream<DataTransferState> get dataTransferStateStream =>
+      _dataTransferStateEventController.stream;
 
   /// Public
   ///
-  static Future<void> scanSmartCardDevices({int timeoutSeconds = 10}) async {
+  static Future<void> scanSmartCardDevices(User user,
+      {int timeoutSeconds = 10}) async {
     try {
       _deviceSearchStateController.add(DeviceSearchState.searching);
-      await _scanForDevices(timeoutSeconds);
+      await _scanForDevices(timeoutSeconds, user: user);
     } on PlatformException catch (e) {
       throw Exception('Failed to scan smart card devices: ${e.message}');
     }
@@ -59,24 +84,11 @@ class FlutterAcsCardReader {
   static Future<void> stopScanningSmartCardDevices() async {
     try {
       await FlutterBluePlus.stopScan();
+      _timeOutTimer?.cancel();
       _stopListeningToScanResults();
       _deviceSearchStateController.add(DeviceSearchState.stopped);
     } on PlatformException catch (e) {
       throw ('Failed to stop scanning for smart card devices: ${e.message}');
-    }
-  }
-
-  static Future<void> readSmartCard(BluetoothDevice device,
-      {required User user}) async {
-    try {
-      Map<String, dynamic> mappedDevice = _deviceToMap(device);
-      Map<String, dynamic> mappedUser = _userToMap(user);
-      await _channel.invokeMethod(
-        'readSmartCard',
-        {'device': mappedDevice, "driver": mappedUser},
-      );
-    } catch (e) {
-      throw Exception('Error reading smart card: $e');
     }
   }
 
@@ -88,17 +100,64 @@ class FlutterAcsCardReader {
         try {
           final dynamic state = call.arguments;
           debugPrint("onDeviceConnectionStatusEvent is $state");
-          _deviceConnectionStateController.add(_deviceConnectionState(state));
-        } catch (e) {
-          rethrow;
+          DeviceConnectionState connectionState = _deviceConnectionState(state);
+          _deviceConnectionStateController.add(connectionState);
+          if (connectionState == DeviceConnectionState.error) {
+            stopScanningSmartCardDevices();
+          } else if (connectionState == DeviceConnectionState.disconnected) {
+            stopScanningSmartCardDevices();
+          }
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onDeviceConnectionStatusEvent] $exception");
         }
-      } else if (call.method == 'onDeviceConnectionStatusEvent') {
+      } else if (call.method == 'onDeviceFoundEvent') {
+        try {
+          final dynamic device = call.arguments;
+          debugPrint("onDeviceFoundEvent $device");
+          CardTerminal cardTerminal = _mapToCardTerminal(device);
+          _deviceFoundEventController.add(cardTerminal);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onDeviceFoundEvent] $exception");
+        }
+      } else if (call.method == 'onCardConnectionEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("onReaderDetectionStatusEvent is $state");
-          _deviceConnectionStateController.add(_deviceConnectionState(state));
-        } catch (e) {
-          rethrow;
+          debugPrint("onCardConnectionEvent $state");
+          CardConnectionState cardConnectionState =
+              _mapToCardConnectionState(state);
+          _cardConnectionStateEventController.add(cardConnectionState);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onCardConnectionEvent] $exception");
+        }
+      } else if (call.method == 'onUpdateTotalReadStepsEvent') {
+        try {
+          final dynamic state = call.arguments;
+          debugPrint("onUpdateTotalReadStepsEvent $state");
+          _totalReadStepsStateEventController.add(state);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onUpdateTotalReadStepsEvent] $exception");
+        }
+      } else if (call.method == 'onUpdateCurrentReadStepEvent') {
+        try {
+          final dynamic state = call.arguments;
+          debugPrint("onUpdateCurrentReadStepEvent $state");
+          _currentReadStepStateEventController.add(state);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onUpdateCurrentReadStepEvent] $exception");
+        }
+      } else if (call.method == 'onUpdateDataTransferStateEvent') {
+        try {
+          final dynamic state = call.arguments;
+          debugPrint("onUpdateDataTransferStateEvent $state");
+          _dataTransferStateEventController.add(_mapToDataTransferState(state));
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onUpdateDataTransferStateEvent] $exception");
         }
       }
     });
@@ -110,43 +169,162 @@ class FlutterAcsCardReader {
   }
 
   static Future<void> _stopListeningToScanResults() async {
-    await scanResultsSubscription?.cancel();
-  }
-
-  static Future<void> _stopListeningToDeviceConnectionResults() async {
+    await FlutterBluePlus.stopScan();
     await scanResultsSubscription?.cancel();
   }
 
   /// Private
   ///
-  static Future<void> _scanForDevices(int timeoutSeconds) async {
-    scanResultsSubscription =
-        FlutterBluePlus.scanResults.listen((results) async {
-      for (ScanResult r in results) {
-        if (r.device.localName.startsWith("ACR")) {
-          _deviceFoundEventController.add(r.device);
-          await stopScanningSmartCardDevices();
-        }
-        debugPrint('${r.device.localName} found! rssi: ${r.rssi}');
-      }
-    });
-    FlutterBluePlus.startScan(timeout: Duration(seconds: timeoutSeconds));
+  static Future<void> _scanForDevices(int timeoutSeconds,
+      {required User user}) async {
+    /// check adapter availability
+    if (await FlutterBluePlus.isAvailable == false) {
+      debugPrint("Bluetooth not supported by this device");
+      _bluetoothStatusController.add(BluetoothAdapterState.unavailable);
+      return;
+    }
+
+    /// turn on bluetooth if we can (Android only)
+    /// for iOS, the user controls bluetooth enable/disable
+    if (Platform.isAndroid) {
+      await FlutterBluePlus.turnOn();
+    }
+
+    /// wait for bluetooth to be on & start searching for devices
+    /// note: for iOS the initial state is typically BluetoothAdapterState.unknown
+    /// note: if you have permissions issues you will get stuck at BluetoothAdapterState.unauthorized
+    await FlutterBluePlus.adapterState
+        .map((state) {
+          debugPrint(state.toString());
+          return state;
+        })
+        .where(
+          (s) => s == BluetoothAdapterState.on,
+        )
+        .first
+        .then((value) => null);
+
+    /// Set listener for Scan results
+    ///
+    _setScanResultsListener(
+      user: user,
+      timeoutSeconds: timeoutSeconds,
+    );
+
+    /// Scan for BLE devices
+    /// Returns the Card terminal type
+    ///
+    await FlutterBluePlus.startScan(
+      timeout: Duration(
+        seconds: timeoutSeconds,
+      ),
+    );
   }
 
-  static Future<void> _stopGattConnection() async {
+  static _setScanResultsListener({
+    required User user,
+    required int timeoutSeconds,
+  }) async {
     try {
-      await _channel.invokeMethod('stopGattConnection');
-    } catch (e) {
-      throw Exception('Error stopping GATT Connection: $e');
+      scanResultsSubscription =
+          FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult result in results) {
+          BluetoothDevice device = result.device;
+          CardTerminalType? type = _cardTerminalType(device);
+          if (type is CardTerminalType) {
+            _connectToCardTerminal(
+              user: user,
+              cardTerminalDeviceType: type,
+              timeoutSeconds: timeoutSeconds,
+            );
+            await stopScanningSmartCardDevices();
+          }
+        }
+      });
+      _timeOutTimer = Timer(
+        Duration(seconds: timeoutSeconds),
+        () async => await stopScanningSmartCardDevices(),
+      );
+    } catch (exception, stackTrace) {
+      debugPrintStack(stackTrace: stackTrace);
+      debugPrint("[FlutterBluePlus.scanResults] $exception");
+      await stopScanningSmartCardDevices();
     }
   }
 
-  static Map<String, dynamic> _deviceToMap(BluetoothDevice device) {
-    return {
-      'name': device.localName,
-      'address': device.remoteId.str,
-      'type': device.type.index,
-    };
+  static Future<void> _connectToCardTerminal({
+    required User user,
+    required CardTerminalType cardTerminalDeviceType,
+    required int timeoutSeconds,
+  }) async {
+    debugPrint(
+        "Start searching for Card Terminals of type $cardTerminalDeviceType");
+    try {
+      Map<String, dynamic> mappedUser = _userToMap(user);
+      await _channel.invokeMethod(
+        'connectToDevice',
+        {
+          'driver': mappedUser,
+          'cardTerminalType': cardTerminalDeviceType.index,
+          'timeoutSeconds': timeoutSeconds
+        },
+      );
+    } catch (e) {
+      throw Exception('Error reading smart card: $e');
+    }
+  }
+
+  static CardTerminal _mapToCardTerminal(dynamic map) {
+    return CardTerminal(
+      name: map['name'],
+      isCardPresent: map['isCardPresent'],
+    );
+  }
+
+  static CardTerminalType? _cardTerminalType(BluetoothDevice device) {
+    String name = device.localName;
+
+    debugPrint("Found device with name $name");
+
+    if (name.contains("ACR")) {
+      if (name.contains("ACR3901")) {
+        return CardTerminalType.acr3901;
+      } else if (name.contains("ACR1255")) {
+        return CardTerminalType.acr1255;
+      } else if (name.contains("AMR220")) {
+        return CardTerminalType.amr220;
+      } else {
+        return CardTerminalType.acr1255v2;
+      }
+    }
+
+    return null;
+  }
+
+  static CardConnectionState _mapToCardConnectionState(String state) {
+    switch (state) {
+      case "BONDING":
+        return CardConnectionState.bonding;
+      case "CONNECTED":
+        return CardConnectionState.connected;
+      case "DISCONNECTED":
+        return CardConnectionState.disconnected;
+      default:
+        return CardConnectionState.disconnected;
+    }
+  }
+
+  static DataTransferState _mapToDataTransferState(String state) {
+    switch (state) {
+      case "PENDING":
+        return DataTransferState.pending;
+      case "TRANSFERING":
+        return DataTransferState.transfering;
+      case "SUCCESS":
+        return DataTransferState.success;
+      default:
+        return DataTransferState.error;
+    }
   }
 
   static Map<String, dynamic> _userToMap(User user) {

@@ -2,8 +2,8 @@ package com.benjamin.horner.flutter_acs_card_reader
 
 import io.flutter.plugin.common.MethodChannel
 
-class CardConnectionStateNotifier {
+class DataTransferStateNotifier {
     fun updateState(state: String, channel: MethodChannel) {
-        channel.invokeMethod("onCardConnectionEvent", state)
+        channel.invokeMethod("onUpdateDataTransferStateEvent", state)
     }
 }
