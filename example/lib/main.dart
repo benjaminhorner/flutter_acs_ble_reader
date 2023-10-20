@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 import 'package:flutter_acs_card_reader/flutter_acs_card_reader.dart';
 
 void main() {
@@ -39,6 +40,7 @@ class _MyAppState extends State<MyApp> {
   CardConnectionState _cardConnectionState = CardConnectionState.disconnected;
   int _totalReadSteps = 0;
   int _currentReadStep = 0;
+  DataTransferState _dataTransferState = DataTransferState.pending;
 
   @override
   void initState() {
@@ -119,6 +121,14 @@ class _MyAppState extends State<MyApp> {
         _currentReadStep = state;
       });
     });
+
+    // Listen to Data Transfer State
+    FlutterAcsCardReader.dataTransferStateStream
+        .listen((DataTransferState state) {
+      setState(() {
+        _dataTransferState = state;
+      });
+    });
   }
 
   @override
@@ -149,6 +159,10 @@ class _MyAppState extends State<MyApp> {
                 height: 8,
               ),
               Text("Card state: $_cardConnectionState"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text("Data Transfer state: $_dataTransferState"),
               const SizedBox(
                 height: 8,
               ),

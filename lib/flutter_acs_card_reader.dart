@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acs_card_reader/enums/card_connection_state.enum.dart';
 import 'package:flutter_acs_card_reader/enums/card_terminal_type.enum.dart';
+import 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 import 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 import 'enums/device_search_state.enum.dart';
@@ -46,6 +47,9 @@ class FlutterAcsCardReader {
       StreamController<int>.broadcast();
   static final StreamController<int> _currentReadStepStateEventController =
       StreamController<int>.broadcast();
+  static final StreamController<DataTransferState>
+      _dataTransferStateEventController =
+      StreamController<DataTransferState>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -62,6 +66,8 @@ class FlutterAcsCardReader {
       _totalReadStepsStateEventController.stream;
   static Stream<int> get currentReadStepStateStream =>
       _currentReadStepStateEventController.stream;
+  static Stream<DataTransferState> get dataTransferStateStream =>
+      _dataTransferStateEventController.stream;
 
   /// Public
   ///
@@ -143,6 +149,15 @@ class FlutterAcsCardReader {
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
           debugPrint("[onUpdateCurrentReadStepEvent] $exception");
+        }
+      } else if (call.method == 'onUpdateDataTransferStateEvent') {
+        try {
+          final dynamic state = call.arguments;
+          debugPrint("onUpdateDataTransferStateEvent $state");
+          _dataTransferStateEventController.add(_mapToDataTransferState(state));
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onUpdateDataTransferStateEvent] $exception");
         }
       }
     });
@@ -296,6 +311,19 @@ class FlutterAcsCardReader {
         return CardConnectionState.disconnected;
       default:
         return CardConnectionState.disconnected;
+    }
+  }
+
+  static DataTransferState _mapToDataTransferState(String state) {
+    switch (state) {
+      case "PENDING":
+        return DataTransferState.pending;
+      case "TRANSFERING":
+        return DataTransferState.transfering;
+      case "SUCCESS":
+        return DataTransferState.success;
+      default:
+        return DataTransferState.error;
     }
   }
 

@@ -7,6 +7,7 @@ import com.benjamin.horner.flutter_acs_card_reader.TotalReadStepsStatusNotifier
 import com.benjamin.horner.flutter_acs_card_reader.CurrentReadStepStatusNotifier
 import com.benjamin.horner.flutter_acs_card_reader.HexHelper
 import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
+import com.benjamin.horner.flutter_acs_card_reader.DataTransferStateNotifier
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommandListGenerator
@@ -48,18 +49,23 @@ private val UNABLE_TO_TRANSMIT_APDU_EXCEPTION = "Unable to transmit APDU"
 private val UNABLE_TO_CREATE_HASH_EXCEPTION = "Unable to Create Hash"
 private val UNABLE_TO_PERFORM_SELECTION = "Unable to select from card"
 private val UNABLE_TO_CONNECT_TO_CARD = "Unable to connect to card"
-private val HEX_DOES_NOT_CONTAIN_ENOUGH_BYTES = "Hex string does not contain enough bytes." 
+private val HEX_DOES_NOT_CONTAIN_ENOUGH_BYTES = "Hex string does not contain enough bytes."
+private val DATA_TRANSFER_STATE_PENDING = "PENDING"
+private val DATA_TRANSFER_STATE_TRANSFERING = "TRANSFERING"
+private val DATA_TRANSFER_STATE_SUCCESS = "SUCCESS"
+private val DATA_TRANSFER_STATE_ERROR = "ERROR"
 private val deviceConnectionStatusNotifier = DeviceConnectionStatusNotifier()
 private val deviceNotifier = DeviceNotifier()
 private val hexToBytesHelper = HexHelper()
 private val cardConnectionStateNotifier = CardConnectionStateNotifier()
 private val totalReadStepsStatusNotifier = TotalReadStepsStatusNotifier()
 private val currentReadStepStatusNotifier = CurrentReadStepStatusNotifier()
+private val dataTransferStateNotifier = DataTransferStateNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
 private val aPDUResponseHelper = APDUResponseHelper()
 
 class SmartCardReader
-    (private val channel: MethodChannel) {
+    (private val methodChannel: MethodChannel) {
     private lateinit var driver: Driver
     private lateinit var activity: Activity
     private var cardTerminalType: Int = 0
@@ -68,11 +74,13 @@ class SmartCardReader
     private var mHandler: Handler = Handler()
     private var cardStructureVersion: CardGen? = null
     private var noOfVarModel: NoOfVarModel = NoOfVarModel()
+    private var totalUploadSteps: Int = 0
     private var uploadSteps: Int = 0
     private var c1BFileData: String = ""
     private var treatedAPDU = ApduData()
     private var tempOffset: Int = 0
     private var isEndOfData: Boolean = false
+    private var apduList: List<ApduCommand> = listOf()
 
     fun connectToDevice(
         activity: Activity, 
@@ -88,14 +96,14 @@ class SmartCardReader
         mManager = BluetoothSmartCard.getInstance(activity).getManager()
         if (mManager == null) {
             Log.e(TAG, "mManager cannot be null")
-            deviceConnectionStatusNotifier.updateState("ERROR", channel)
+            deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
             return
         }
 
         mFactory = BluetoothSmartCard.getInstance(activity).getFactory()
         if (mFactory == null) {
             Log.e(TAG, "mFactory cannot be null")
-            deviceConnectionStatusNotifier.updateState("ERROR", channel)
+            deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
             return
         }
 
@@ -112,18 +120,18 @@ class SmartCardReader
                 override fun onScan(terminal: CardTerminal) {
                     if (terminal.name.contains("ACR")) {
                         mManager?.stopScan()
-                        deviceNotifier.updateState(terminal, channel)
-                        deviceConnectionStatusNotifier.updateState("CONNECTED", channel)
+                        deviceNotifier.updateState(terminal, methodChannel)
+                        deviceConnectionStatusNotifier.updateState("CONNECTED", methodChannel)
                         activity.runOnUiThread {
                             Log.e(TAG, terminal.name)
-                            connectToCard(terminal, channel)
+                            connectToCard(terminal, methodChannel)
                         }
                     }
                 }
             })
         } else {
             Log.e(TAG, "mManager cannot be null at this point")
-            deviceConnectionStatusNotifier.updateState("ERROR", channel)
+            deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
             return
         }
         
@@ -134,12 +142,15 @@ class SmartCardReader
         }, (timeoutSeconds*1000).toLong())     
     }
     
-    private fun connectToCard(terminal: CardTerminal, channel: MethodChannel) {
+    private fun connectToCard(
+        terminal: CardTerminal,
+        methodChannel: MethodChannel
+    ) {
         var card: Card
         var cardChannel: CardChannel
 
         Log.e(TAG, "Connecting to card")
-        cardConnectionStateNotifier.updateState("BONDING", channel)
+        cardConnectionStateNotifier.updateState("BONDING", methodChannel)
 
         try {
             card = terminal.connect("*")
@@ -147,7 +158,7 @@ class SmartCardReader
             val atrBytes: ByteArray = atr.bytes
             val atrHex: String = hexToBytesHelper.byteArrayToHexString(atrBytes)
 
-            cardConnectionStateNotifier.updateState("CONNECTED", channel)
+            cardConnectionStateNotifier.updateState("CONNECTED", methodChannel)
 
             cardChannel = card.basicChannel
 
@@ -155,24 +166,22 @@ class SmartCardReader
                 getCardVersion(cardChannel)
             }
 
-            val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardStructureVersion!!, noOfVarModel)
-
-            totalReadStepsStatusNotifier.updateState(apduList.size - 2, channel) // Remove MF
-
-            select(cardChannel, apduList)
-            
-            disconnectCard(channel, card)
+            apduList = apduCommandListGenerator.makeList(cardStructureVersion!!, noOfVarModel)
+            totalUploadSteps = apduList.size - 2
+            totalReadStepsStatusNotifier.updateState(totalUploadSteps, methodChannel) // Remove MF
+            dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_TRANSFERING, methodChannel)
+            select(cardChannel)
+            disconnectCard(methodChannel, card)
             
         } catch (e: Exception) {
-            handleError(e)
+            handleError(e, methodChannel)
         }
     }
 
-    private fun handleError(e: Exception) {
+    private fun handleError(e: Exception, methodChannel: MethodChannel) {
         Log.e(TAG, "${e.message}")
-        disconnectCard(channel)
-        // TODO: Handle error
-        // Send error back to Dart code
+        disconnectCard(methodChannel)
+        dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_ERROR, methodChannel)
     }
 
     private fun handleSelectAPDUResponse(
@@ -192,9 +201,19 @@ class SmartCardReader
                 }
                 else if (apdu.isEF && apdu.needsHash) {
                     performHashCommand(cardChannel)
-                    read(cardChannel, apdu, treatedAPDU.offset, getCardVersion)
+                    read(
+                        cardChannel,
+                        apdu,
+                        methodChannel,
+                        treatedAPDU.offset,
+                        getCardVersion)
                 } else if (apdu.isEF) {
-                    read(cardChannel, apdu, treatedAPDU.offset, getCardVersion)
+                    read(
+                        cardChannel,
+                        apdu,
+                        methodChannel,
+                        treatedAPDU.offset,
+                        getCardVersion)
                 }
             }
             catch (e: Exception) {
@@ -204,7 +223,6 @@ class SmartCardReader
 
     private fun select(
         cardChannel: CardChannel,
-        apduList: List<ApduCommand>,
         getCardVersion: Boolean = false,
         ) {
             try {
@@ -244,6 +262,7 @@ class SmartCardReader
         status: APDUReadResponseEnum,
         apdu: ApduCommand,
         cardChannel: CardChannel,
+        methodChannel: MethodChannel,
         getCardVersion: Boolean,
         remainingBytes: Int,
         ) {
@@ -258,7 +277,11 @@ class SmartCardReader
                 if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
                     setCardStructureVersionAndNoOfVariables(responseHex)
                 } else if (!getCardVersion) {
-                    buildC1BFile(responseHex, apdu, cardChannel)
+                    buildC1BFile(
+                        responseHex,
+                        apdu,
+                        cardChannel,
+                        methodChannel)
                 }
             } else if (
                 status == APDUReadResponseEnum.P1_LENGTH_GREATER_THAN_EF || 
@@ -268,15 +291,21 @@ class SmartCardReader
                     tempOffset = if (treatedAPDU.offset == 0) treatedAPDU.offset else treatedAPDU.offset - 1
                     treatedAPDU.length -= 1
                     Log.e(TAG, "tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
-                    read(cardChannel, apdu, tempOffset)
+                    read(
+                        cardChannel,
+                        apdu,
+                        methodChannel,
+                        tempOffset)
             }
             else {
                 throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
             }
     }
 
-    private fun read(cardChannel: CardChannel, 
+    private fun read(
+        cardChannel: CardChannel, 
         apdu: ApduCommand,
+        methodChannel: MethodChannel,
         offset: Int = 0,
         getCardVersion: Boolean = false,
         ) {
@@ -302,6 +331,7 @@ class SmartCardReader
                         aPDUResponseHelper.readResponseIntToAPDUReadResponse(sw1),
                         apdu,
                         cardChannel,
+                        methodChannel,
                         getCardVersion,
                         sw2!!,
                     )
@@ -313,8 +343,8 @@ class SmartCardReader
 
     private fun getCardVersion(cardChannel: CardChannel, testGen1: Boolean = false) {
         try {
-            val apduList: List<ApduCommand> = if (testGen1) apduCommandListGenerator.cardVersionCommandList() else apduCommandListGenerator.cardVersionGen2CommandList()
-            select(cardChannel, apduList, true)
+            apduList = if (testGen1) apduCommandListGenerator.cardVersionCommandList() else apduCommandListGenerator.cardVersionGen2CommandList()
+            select(cardChannel, true)
         }
         catch (e: Exception) {
             if (e.message == UNABLE_TO_TRANSMIT_APDU_EXCEPTION) {
@@ -386,37 +416,45 @@ class SmartCardReader
         hexString: String,
         apdu: ApduCommand,
         cardChannel: CardChannel,
+        methodChannel: MethodChannel,
         ) {
             Log.e(TAG, "---------------------------------------------------")
             if (apdu.lengthMax <= 255) {
-                treatedAPDU.data = hexString
-                treatedAPDU.offset = 0
-                isEndOfData = false
-                // c1BFileData += treatedAPDU.data
-                c1BFileData += "${treatedAPDU.name} "
-                uploadSteps += 1
-                currentReadStepStatusNotifier.updateState(uploadSteps, channel)
-                Log.e(TAG, "${treatedAPDU.name} uploadSteps <255 bytes: $uploadSteps")
-                Log.e(TAG, "---------------------------------------------------")
+                writeDataToC1BFile(hexString, methodChannel)
             } else if (apdu.name == treatedAPDU.name && !isEndOfData) {
                 treatedAPDU.data += hexString
                 if (tempOffset == 0) {
                     treatedAPDU.offset += 1
-                    read(cardChannel, apdu, treatedAPDU.offset)
+                    read(
+                        cardChannel,
+                        apdu,
+                        methodChannel,
+                        treatedAPDU.offset)
                 }
             } else {
-                treatedAPDU.data = hexString
-                treatedAPDU.offset = 0
-                tempOffset = 0
-                isEndOfData = false
-                // c1BFileData += treatedAPDU.data
-                c1BFileData += "${treatedAPDU.name} "
-                uploadSteps += 1
-                currentReadStepStatusNotifier.updateState(uploadSteps, channel)
-                Log.e(TAG, "${treatedAPDU.name} uploadSteps send data after loop: $uploadSteps")
-                Log.e(TAG, "c1BFileData $c1BFileData")
-                Log.e(TAG, "---------------------------------------------------")
+                writeDataToC1BFile(hexString, methodChannel)
             }
+    }
+
+    private fun writeDataToC1BFile(
+        hexString: String,
+        methodChannel: MethodChannel,
+    ) {
+        treatedAPDU.data = hexString
+        treatedAPDU.offset = 0
+        tempOffset = 0
+        isEndOfData = false
+        // c1BFileData += treatedAPDU.data
+        c1BFileData += "${treatedAPDU.name} "
+        uploadSteps += 1
+        currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
+
+        if (totalUploadSteps == uploadSteps) {
+            dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_SUCCESS, methodChannel)
+        }
+        Log.e(TAG, "${treatedAPDU.name} uploadSteps: $uploadSteps")
+        Log.e(TAG, "c1BFileData $c1BFileData")
+        Log.e(TAG, "---------------------------------------------------")
     }
 
     private fun handleHashAPDUResponse(
@@ -461,7 +499,7 @@ class SmartCardReader
     }
 
     private fun disconnectCard(
-        channel: MethodChannel,
+        methodChannel: MethodChannel,
         card: Card? = null
         ) {
         if (card != null) {
@@ -470,9 +508,10 @@ class SmartCardReader
         treatedAPDU = ApduData()
         c1BFileData = ""
         uploadSteps = 0
+        totalUploadSteps = 0
         cardStructureVersion = null
         noOfVarModel = NoOfVarModel()
-        deviceConnectionStatusNotifier.updateState("DISCONNECTED", channel)
-        cardConnectionStateNotifier.updateState("DISCONNECTED", channel)
+        deviceConnectionStatusNotifier.updateState("DISCONNECTED", methodChannel)
+        cardConnectionStateNotifier.updateState("DISCONNECTED", methodChannel)
     }
 }
