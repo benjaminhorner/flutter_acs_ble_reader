@@ -107,7 +107,6 @@ class SmartCardReader
             return
         }
 
-        /// Start scanning for devices
         startScan(timeoutSeconds)
 
     }
@@ -133,7 +132,7 @@ class SmartCardReader
             return
         }
         
-        /* Stop the scan. */
+        /* Stop the scan after a delay */
         mHandler.postDelayed({
             mManager?.stopScan()
             Log.e(TAG, "stop scanning for devices…")
