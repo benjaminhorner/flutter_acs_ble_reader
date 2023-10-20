@@ -88,7 +88,7 @@ class SmartCardReader
         driver: Driver, 
         cardTerminalType: Int, 
         timeoutSeconds: Int,
-        ) {
+    ) {
         this.activity = activity
         this.driver = driver
         this.cardTerminalType = cardTerminalType
@@ -113,8 +113,6 @@ class SmartCardReader
     }
 
     private fun startScan(timeoutSeconds: Int) {
-        // TODO: Check if a Terminal is already connected
-        // If the terminal is already connected, break and read from the connected terminal
         if (mManager != null) {
             mManager!!.startScan(cardTerminalType, object : BluetoothTerminalManager.TerminalScanCallback {
                 override fun onScan(terminal: CardTerminal) {
