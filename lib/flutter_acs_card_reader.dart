@@ -178,7 +178,7 @@ class FlutterAcsCardReader {
   static Future<void> _scanForDevices(int timeoutSeconds,
       {required User user}) async {
     /// check adapter availability
-    if (await FlutterBluePlus.isAvailable == false) {
+    if (await FlutterBluePlus.isSupported == false) {
       debugPrint("Bluetooth not supported by this device");
       _bluetoothStatusController.add(BluetoothAdapterState.unavailable);
       return;
