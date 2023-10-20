@@ -62,7 +62,7 @@ private val totalReadStepsStatusNotifier = TotalReadStepsStatusNotifier()
 private val currentReadStepStatusNotifier = CurrentReadStepStatusNotifier()
 private val dataTransferStateNotifier = DataTransferStateNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
-private val apduResponseHelper = apduResponseHelper()
+private val apduResponseHelper = APDUResponseHelper()
 
 class SmartCardReader
     (private val methodChannel: MethodChannel) {
