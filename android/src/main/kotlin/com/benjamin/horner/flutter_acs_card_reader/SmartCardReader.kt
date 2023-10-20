@@ -12,7 +12,7 @@ import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommandListGenerator
 import com.benjamin.horner.flutter_acs_card_reader.NoOfVarModel
-import com.benjamin.horner.flutter_acs_card_reader.APDUResponseHelper
+import com.benjamin.horner.flutter_acs_card_reader.apduResponseHelper
 import com.benjamin.horner.flutter_acs_card_reader.APDUSelectResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.APDUReadResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.APDUHashResponseEnum
@@ -62,7 +62,7 @@ private val totalReadStepsStatusNotifier = TotalReadStepsStatusNotifier()
 private val currentReadStepStatusNotifier = CurrentReadStepStatusNotifier()
 private val dataTransferStateNotifier = DataTransferStateNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
-private val aPDUResponseHelper = APDUResponseHelper()
+private val apduResponseHelper = apduResponseHelper()
 
 class SmartCardReader
     (private val methodChannel: MethodChannel) {
@@ -244,7 +244,7 @@ class SmartCardReader
                     } else {
                         handleSelectAPDUResponse(
                             response, 
-                            aPDUResponseHelper.selectResponseIntToAPDUReadResponse(sw1),
+                            apduResponseHelper.selectResponseIntToAPDUReadResponse(sw1),
                             apdu,
                             cardChannel,
                             getCardVersion,
@@ -328,7 +328,7 @@ class SmartCardReader
                 } else {
                     handleReadAPDUResponse(
                         response,
-                        aPDUResponseHelper.readResponseIntToAPDUReadResponse(sw1),
+                        apduResponseHelper.readResponseIntToAPDUReadResponse(sw1),
                         apdu,
                         cardChannel,
                         methodChannel,
@@ -484,7 +484,7 @@ class SmartCardReader
 
             } else {
                 handleHashAPDUResponse(
-                    aPDUResponseHelper.hashResponseIntToAPDUReadResponse(sw1!!)
+                    apduResponseHelper.hashResponseIntToAPDUReadResponse(sw1!!)
                 )
             }
             
