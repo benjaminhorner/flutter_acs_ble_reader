@@ -244,14 +244,16 @@ class ApduCommandListGenerator {
             name = "EF_CARD_CERTIFICATE",
             lengthMin = 204,
             lengthMax = 341,
-            needsSignature = false
+            needsSignature = false,
+            isCertificat = true
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
             name = "EF_CA_CERTIFICATE",
             lengthMin = 204,
             lengthMax = 341,
-            needsSignature = false
+            needsSignature = false,
+            isCertificat = true
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 23",
@@ -270,14 +272,16 @@ class ApduCommandListGenerator {
             name = "EF_CARDSIGNCERTIFICATE",
             lengthMin = 204,
             lengthMax = 341,
-            needsSignature = false
+            needsSignature = false,
+            isCertificat = true
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 09",
             name = "EF_LINK_CERTIFICATE",
             lengthMin = 204,
             lengthMax = 341,
-            needsSignature = false
+            needsSignature = false,
+            isCertificat = true
         ),
     )
 

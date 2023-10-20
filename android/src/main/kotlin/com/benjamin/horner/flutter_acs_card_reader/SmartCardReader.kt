@@ -71,6 +71,8 @@ class SmartCardReader
     private var uploadSteps: Int = 0
     private var c1BFileData: String = ""
     private var treatedAPDU = ApduData()
+    private var tempOffset: Int = 0
+    private var isEndOfData: Boolean = false
 
     fun connectToDevice(
         activity: Activity, 
@@ -155,7 +157,7 @@ class SmartCardReader
 
             val apduList: List<ApduCommand> = apduCommandListGenerator.makeList(cardStructureVersion!!, noOfVarModel)
 
-            totalReadStepsStatusNotifier.updateState(apduList.size - 1, channel)
+            totalReadStepsStatusNotifier.updateState(apduList.size - 2, channel) // Remove MF
 
             select(cardChannel, apduList)
             
@@ -190,9 +192,9 @@ class SmartCardReader
                 }
                 else if (apdu.isEF && apdu.needsHash) {
                     performHashCommand(cardChannel)
-                    read(cardChannel, apdu, getCardVersion)
+                    read(cardChannel, apdu, treatedAPDU.offset, getCardVersion)
                 } else if (apdu.isEF) {
-                    read(cardChannel, apdu, getCardVersion)
+                    read(cardChannel, apdu, treatedAPDU.offset, getCardVersion)
                 }
             }
             catch (e: Exception) {
@@ -208,6 +210,8 @@ class SmartCardReader
             try {
                 for (apdu in apduList) {
                     Log.e(TAG, "Selecting APDU ${apdu.name} with command ${apdu.selectCommand}")
+
+                    treatedAPDU.name = apdu.name
 
                     val commandAPDU = CommandAPDU(
                         hexToBytesHelper.hexStringToByteArray(apdu.selectCommand)
@@ -247,20 +251,24 @@ class SmartCardReader
             val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
             val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
+            Log.e(TAG, "Handle response: SW2 $remainingBytes // tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
+
             if (status == APDUReadResponseEnum.SUCCESS) {
-                Log.e(TAG, "APDU Read name was ${apdu.name}")
-                Log.e(TAG, "APDU Read Response data size: ${responseData.size}")
-                Log.e(TAG, "APDU Read Response Hex: ${responseHex}")
+                treatedAPDU.length = 255
                 if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
                     setCardStructureVersionAndNoOfVariables(responseHex)
-                } else {
-                    addToC1BFile(responseHex, apdu)
+                } else if (!getCardVersion) {
+                    buildC1BFile(responseHex, apdu, cardChannel)
                 }
             } else if (
                 status == APDUReadResponseEnum.P1_LENGTH_GREATER_THAN_EF || 
-                status == APDUReadResponseEnum.P1_PLUS_LENGTH_GREATER_THAN_EF) {
-                    Log.e(TAG, "Remaining Read bytes: $remainingBytes and SW1 was $status")
-                    // TODO: Create read loop for remaining bytes
+                status == APDUReadResponseEnum.P1_PLUS_LENGTH_GREATER_THAN_EF && treatedAPDU.length > 0) {
+                    Log.e(TAG, "SW1 was $status and remaing bytes length: $remainingBytes")
+                    isEndOfData = true
+                    tempOffset = if (treatedAPDU.offset == 0) treatedAPDU.offset else treatedAPDU.offset - 1
+                    treatedAPDU.length -= 1
+                    Log.e(TAG, "tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
+                    read(cardChannel, apdu, tempOffset)
             }
             else {
                 throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
@@ -268,15 +276,15 @@ class SmartCardReader
     }
 
     private fun read(cardChannel: CardChannel, 
-        apdu: ApduCommand, 
+        apdu: ApduCommand,
+        offset: Int = 0,
         getCardVersion: Boolean = false,
-        offset: Int = 0
         ) {
             try {
                 var p1: String = String.format("%02d", offset)
-                var readCommand = "00 B0 ${p1} 00 ${hexToBytesHelper.byteLength(apdu)}"
+                var readCommand = "00 B0 ${p1} 00 ${hexToBytesHelper.byteLength(apdu, treatedAPDU.length)}"
 
-                Log.e(TAG, "Reading APDU ${apdu.name}, getCardVersion value: ${getCardVersion}, command: ${readCommand}")
+                Log.e(TAG, "Reading APDU ${apdu.name}, offset value: $offset, command: ${readCommand}")
 
                 val commandAPDU = CommandAPDU(
                     hexToBytesHelper.hexStringToByteArray(readCommand)
@@ -319,7 +327,7 @@ class SmartCardReader
     }
 
     private fun setCardStructureVersionAndNoOfVariables(hexString: String) {
-        val hexValues = hexString.split(" ") // Split the hex string into individual byte values
+        val hexValues = hexString.split(" ")
         if (hexValues.size >= 17) {
             val generationHex = hexValues[1]
             val versionHex = hexValues[2] 
@@ -374,18 +382,41 @@ class SmartCardReader
         }
     }
 
-    private fun addToC1BFile(hexString: String, apdu: ApduCommand) {
-        currentReadStepStatusNotifier.updateState(uploadSteps++, channel)
-        if (apdu.name == treatedAPDU.name) {
-            Log.e(TAG, "Add Data to ${treatedAPDU.name}")
-            treatedAPDU.data += hexString
-        } else {
-            Log.e(TAG, "Send Data from ${treatedAPDU.name}")
-            treatedAPDU.name = apdu.name
-            treatedAPDU.data = hexString
-            c1BFileData += treatedAPDU.data
-        }
-        Log.e(TAG, "c1BFileData is $c1BFileData")
+    private fun buildC1BFile(
+        hexString: String,
+        apdu: ApduCommand,
+        cardChannel: CardChannel,
+        ) {
+            Log.e(TAG, "---------------------------------------------------")
+            if (apdu.lengthMax <= 255) {
+                treatedAPDU.data = hexString
+                treatedAPDU.offset = 0
+                isEndOfData = false
+                // c1BFileData += treatedAPDU.data
+                c1BFileData += "${treatedAPDU.name} "
+                uploadSteps += 1
+                currentReadStepStatusNotifier.updateState(uploadSteps, channel)
+                Log.e(TAG, "${treatedAPDU.name} uploadSteps <255 bytes: $uploadSteps")
+                Log.e(TAG, "---------------------------------------------------")
+            } else if (apdu.name == treatedAPDU.name && !isEndOfData) {
+                treatedAPDU.data += hexString
+                if (tempOffset == 0) {
+                    treatedAPDU.offset += 1
+                    read(cardChannel, apdu, treatedAPDU.offset)
+                }
+            } else {
+                treatedAPDU.data = hexString
+                treatedAPDU.offset = 0
+                tempOffset = 0
+                isEndOfData = false
+                // c1BFileData += treatedAPDU.data
+                c1BFileData += "${treatedAPDU.name} "
+                uploadSteps += 1
+                currentReadStepStatusNotifier.updateState(uploadSteps, channel)
+                Log.e(TAG, "${treatedAPDU.name} uploadSteps send data after loop: $uploadSteps")
+                Log.e(TAG, "c1BFileData $c1BFileData")
+                Log.e(TAG, "---------------------------------------------------")
+            }
     }
 
     private fun handleHashAPDUResponse(
