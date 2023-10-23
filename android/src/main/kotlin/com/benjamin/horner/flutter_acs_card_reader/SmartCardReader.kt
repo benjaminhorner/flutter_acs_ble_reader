@@ -363,8 +363,10 @@ class SmartCardReader
             
             val noOfEventsPerTypeHex = hexValues[3]
             val noOfFaultsPerTypeHex = hexValues[4]
+            val cardActivityLengthRange = hexValues[5] + hexValues[6]
             val noOfCardVehicleRecordsHex = hexValues[7] + hexValues[8]
             val noOfCardPlaceRecordsHex = hexValues[9] + hexValues[10]
+            val noOfGNSSRecords = hexValues[11] + hexValues[12]
 
             Log.e(TAG, "Card Structure Hex is: $hexString")
             Log.e(TAG, "Card Structure Card Generation is: $generationHex")
@@ -373,13 +375,17 @@ class SmartCardReader
             Log.e(TAG, "Card Structure noOfFaultsPerTypeHex is: $noOfFaultsPerTypeHex")
             Log.e(TAG, "Card Structure noOfCardVehicleRecordsHex is: $noOfCardVehicleRecordsHex")
             Log.e(TAG, "Card Structure noOfCardPlaceRecordsHex is: $noOfCardPlaceRecordsHex")
+            Log.e(TAG, "Card Structure cardActivityLengthRange is: $cardActivityLengthRange")
+            Log.e(TAG, "Card Structure noOfGNSSRecords is: $noOfGNSSRecords")
 
             setCardGenerationAndVersion(generationHex, versionHex)
 
             noOfVarModel.noOfEventsPerType = noOfEventsPerTypeHex.toInt(16)
             noOfVarModel.noOfFaultsPerType = noOfFaultsPerTypeHex.toInt(16)
+            noOfVarModel.cardActivityLengthRange = cardActivityLengthRange.toInt(16)
             noOfVarModel.noOfCardVehicleRecords = noOfCardVehicleRecordsHex.toInt(16)
             noOfVarModel.noOfCardPlaceRecords = noOfCardPlaceRecordsHex.toInt(16)
+            noOfVarModel.noOfGNSSRecords = noOfGNSSRecords.tonInt(16)
 
             Log.e(TAG, "Card Structure noOfEventsPerType is: ${noOfVarModel.noOfEventsPerType}")
             Log.e(TAG, "Card Structure noOfFaultsPerType is: ${noOfVarModel.noOfFaultsPerType}")
