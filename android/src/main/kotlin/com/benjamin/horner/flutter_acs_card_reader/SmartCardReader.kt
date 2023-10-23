@@ -8,6 +8,7 @@ import com.benjamin.horner.flutter_acs_card_reader.CurrentReadStepStatusNotifier
 import com.benjamin.horner.flutter_acs_card_reader.HexHelper
 import com.benjamin.horner.flutter_acs_card_reader.CardConnectionStateNotifier
 import com.benjamin.horner.flutter_acs_card_reader.DataTransferStateNotifier
+import com.benjamin.horner.flutter_acs_card_reader.DataTransferNotifier
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommandListGenerator
@@ -63,6 +64,7 @@ private val currentReadStepStatusNotifier = CurrentReadStepStatusNotifier()
 private val dataTransferStateNotifier = DataTransferStateNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
 private val apduResponseHelper = APDUResponseHelper()
+private val dataTransferNotifier = DataTransferNotifier()
 
 class SmartCardReader
     (private val methodChannel: MethodChannel) {
@@ -448,6 +450,7 @@ class SmartCardReader
 
         if (totalUploadSteps == uploadSteps) {
             dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_SUCCESS, methodChannel)
+            dataTransferNotifier.updateState(c1BFileData, methodChannel)
         }
         Log.e(TAG, "${treatedAPDU.name} uploadSteps: $uploadSteps")
         Log.e(TAG, "c1BFileData $c1BFileData")

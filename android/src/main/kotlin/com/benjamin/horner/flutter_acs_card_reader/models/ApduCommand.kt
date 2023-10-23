@@ -6,6 +6,7 @@ data class ApduCommand (
     var selectCommand: String = "",
     var readCommand: String = "",
     var name: String = "",
+    var hexName: String = "",
     var lengthMin: Int = 0,
     var lengthMax: Int = 0,
     var cardGen: CardGen = CardGen.GEN1,

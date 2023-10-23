@@ -50,6 +50,8 @@ class FlutterAcsCardReader {
   static final StreamController<DataTransferState>
       _dataTransferStateEventController =
       StreamController<DataTransferState>.broadcast();
+  static final StreamController<String> _dataTransferController =
+      StreamController<String>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -68,6 +70,8 @@ class FlutterAcsCardReader {
       _currentReadStepStateEventController.stream;
   static Stream<DataTransferState> get dataTransferStateStream =>
       _dataTransferStateEventController.stream;
+  static Stream<String> get dataTransferStream =>
+      _dataTransferController.stream;
 
   /// Public
   ///
@@ -158,6 +162,15 @@ class FlutterAcsCardReader {
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
           debugPrint("[onUpdateDataTransferStateEvent] $exception");
+        }
+      } else if (call.method == 'onReceiveDataEvent') {
+        try {
+          final dynamic data = call.arguments;
+          debugPrint("onReceiveDataEvent $data");
+          _dataTransferController.add(data);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onReceiveDataEvent] $exception");
         }
       }
     });

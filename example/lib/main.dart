@@ -129,6 +129,13 @@ class _MyAppState extends State<MyApp> {
         _dataTransferState = state;
       });
     });
+
+    // Listen to Data Transfer
+    FlutterAcsCardReader.dataTransferStream.listen((String data) {
+      setState(() {
+        debugPrint("Received Data: $data");
+      });
+    });
   }
 
   @override
