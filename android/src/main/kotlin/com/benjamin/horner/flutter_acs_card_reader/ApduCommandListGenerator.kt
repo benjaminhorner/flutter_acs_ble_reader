@@ -103,36 +103,6 @@ class ApduCommandListGenerator {
             lengthMax = 53
         ),
         ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
-            name = "EF_EVENTS_DATA",
-            lengthMin = 864,
-            lengthMax = 1728
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
-            name = "EF_FAULTS_DATA",
-            lengthMin = 576,
-            lengthMax = 1152
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
-            name = "EF_DRIVER_ACTIVITY_DATA",
-            lengthMin = 5548,
-            lengthMax = 13780
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
-            name = "EF_VEHICULES_USED",
-            lengthMin = 2606,
-            lengthMax = 6202
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
-            name = "EF_PLACES",
-            lengthMin = 841,
-            lengthMax = 1121
-        ),
-        ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
             name = "EF_CURRENT_USAGE",
             lengthMin = 19,
@@ -242,7 +212,53 @@ class ApduCommandListGenerator {
         ),
     )
 
-    private val variableApduCommandsList: List<ApduCommand> = listOf(
+    private val gen1VariableApduCommandsList: List<ApduCommand> = listOf(
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
+            name = "EF_EVENTS_DATA",
+            lengthMin = 864,
+            lengthMax = 1728,
+            noOfVarType = NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE,
+            remainingBytesMultiplier = 144
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
+            name = "EF_FAULTS_DATA",
+            lengthMin = 576,
+            lengthMax = 1152,
+            noOfVarType = NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE,
+            remainingBytesMultiplier = 48
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
+            name = "EF_DRIVER_ACTIVITY_DATA",
+            lengthMin = 5548,
+            lengthMax = 13780,
+            noOfVarType = NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE,
+            remainingBytesMultiplier = 1,
+            remainingExtraBytes = 4
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
+            name = "EF_VEHICULES_USED",
+            lengthMin = 2606,
+            lengthMax = 6202,
+            noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
+            remainingBytesMultiplier = 31,
+            remainingExtraBytes = 2
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
+            name = "EF_PLACES",
+            lengthMin = 841,
+            lengthMax = 1121,
+            noOfVarType = NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS,
+            remainingBytesMultiplier = 10,
+            remainingExtraBytes = 1
+        ),
+    )
+    
+    private val gen2VariableApduCommandsList: List<ApduCommand> = listOf(
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
             name = "EF_EVENTS_DATA",
@@ -329,13 +345,42 @@ class ApduCommandListGenerator {
     }
 
 
+    private fun makeGen1List(
+        noOfVarModel: NoOfVarModel,
+    ): List<ApduCommand> {
+        val initialList: List<ApduCommand> = commonApduCommandList.plus(apduList)
+        val updatedVariableApduCommandsList: MutableList<ApduCommand> = mutableListOf()
+
+        for (apdu in gen1VariableApduCommandsList) {
+            if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfEventsPerType)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfFaultsPerType)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleRecords)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardPlaceRecords)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.cardActivityLengthRange)
+                updatedVariableApduCommandsList.add(apdu)
+            }
+        }
+
+        val commandList: List<ApduCommand> = initialList.plus(updatedVariableApduCommandsList)
+        return commandList
+    }
+
     private fun makeGen2List(
         noOfVarModel: NoOfVarModel,
     ): List<ApduCommand> {
         val initialList: List<ApduCommand> = commonApduCommandList.plus(apduTG2List)
         val updatedVariableApduCommandsList: MutableList<ApduCommand> = mutableListOf()
 
-        for (apdu in variableApduCommandsList) {
+        for (apdu in gen2VariableApduCommandsList) {
             if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfEventsPerType)
                 updatedVariableApduCommandsList.add(apdu)
@@ -378,7 +423,7 @@ class ApduCommandListGenerator {
         noOfVarModel: NoOfVarModel,
     ): List<ApduCommand> {
         when(cardGen) {
-            CardGen.GEN1 -> return commonApduCommandList.plus(apduList)
+            CardGen.GEN1 -> return makeGen1List(noOfVarModel)
             CardGen.GEN2 -> return makeGen2List(noOfVarModel)
             CardGen.GEN2V2 -> return commonApduCommandList.plus(apduTG2V2List)
             else -> return commonApduCommandList.plus(apduList)

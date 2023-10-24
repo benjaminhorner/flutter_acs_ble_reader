@@ -200,6 +200,9 @@ class SmartCardReader
                 }
                 else if (apdu.isEF && apdu.needsHash) {
                     performHashCommand(cardChannel)
+                    if (apdu.needsSignature) {
+                        performSign(cardChannel)
+                    }
                     read(
                         cardChannel,
                         apdu,
@@ -516,6 +519,7 @@ class SmartCardReader
     private fun performSign() {
         val TG1_SIGNATURE = "00 2A 9E 9A 80" // 128 bytes
         var TG2_SIGNATURE: String? = null // 64…132 bytes
+
     }
 
     private fun disconnectCard(
