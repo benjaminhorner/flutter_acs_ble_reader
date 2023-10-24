@@ -373,39 +373,15 @@ class SmartCardReader
 
     private fun setCardStructureVersionAndNoOfVariables(hexString: String) {
         val hexValues = hexString.split(" ")
-        if (hexValues.size >= 17) {
-            val generationHex = hexValues[1]
-            val versionHex = hexValues[2] 
-            
-            val noOfEventsPerTypeHex = hexValues[3]
-            val noOfFaultsPerTypeHex = hexValues[4]
-            val cardActivityLengthRange = hexValues[5] + hexValues[6]
-            val noOfCardVehicleRecordsHex = hexValues[7] + hexValues[8]
-            val noOfCardPlaceRecordsHex = hexValues[9] + hexValues[10]
-            val noOfGNSSRecords = hexValues[11] + hexValues[12]
-            val noOfCardVehicleUnitRecords = hexValues[15] + hexValues[16]
-
-            Log.e(TAG, "Card Structure Hex is: $hexString")
-            Log.e(TAG, "Card Structure Card Generation is: $generationHex")
-            Log.e(TAG, "Card Structure Card version number is: $versionHex")
-
-            Log.e(TAG, "Card Structure noOfEventsPerTypeHex is: $noOfEventsPerTypeHex")
-            Log.e(TAG, "Card Structure noOfFaultsPerTypeHex is: $noOfFaultsPerTypeHex")
-            Log.e(TAG, "Card Structure noOfCardVehicleRecordsHex is: $noOfCardVehicleRecordsHex")
-            Log.e(TAG, "Card Structure noOfCardPlaceRecordsHex is: $noOfCardPlaceRecordsHex")
-            Log.e(TAG, "Card Structure cardActivityLengthRange is: $cardActivityLengthRange")
-            Log.e(TAG, "Card Structure noOfGNSSRecords is: $noOfGNSSRecords")
-            Log.e(TAG, "Card Structure noOfCardVehicleUnitRecords is: $noOfCardVehicleUnitRecords")
-
-            setCardGenerationAndVersion(generationHex, versionHex)
-
-            noOfVarModel.noOfEventsPerType = noOfEventsPerTypeHex.toInt(16)
-            noOfVarModel.noOfFaultsPerType = noOfFaultsPerTypeHex.toInt(16)
-            noOfVarModel.cardActivityLengthRange = cardActivityLengthRange.toInt(16)
-            noOfVarModel.noOfCardVehicleRecords = noOfCardVehicleRecordsHex.toInt(16)
-            noOfVarModel.noOfCardPlaceRecords = noOfCardPlaceRecordsHex.toInt(16)
-            noOfVarModel.noOfGNSSRecords = noOfGNSSRecords.toInt(16)
-            noOfVarModel.noOfCardVehicleUnitRecords = noOfCardVehicleUnitRecords.toInt(16)
+        
+        if (hexValues.size >= 17) { // Gen 2 Case
+            noOfVarModel.noOfEventsPerType = hexValues[3].toInt(16)
+            noOfVarModel.noOfFaultsPerType = hexValues[4].toInt(16)
+            noOfVarModel.cardActivityLengthRange = (hexValues[5] + hexValues[6]).toInt(16)
+            noOfVarModel.noOfCardVehicleRecords = (hexValues[7] + hexValues[8]).toInt(16)
+            noOfVarModel.noOfCardPlaceRecords = (hexValues[9] + hexValues[10]).toInt(16)
+            noOfVarModel.noOfGNSSRecords = (hexValues[11] + hexValues[12]).toInt(16)
+            noOfVarModel.noOfCardVehicleUnitRecords = (hexValues[15] + hexValues[16]).toInt(16)
 
             Log.e(TAG, "Card Structure noOfEventsPerType is: ${noOfVarModel.noOfEventsPerType}")
             Log.e(TAG, "Card Structure noOfFaultsPerType is: ${noOfVarModel.noOfFaultsPerType}")
@@ -416,7 +392,21 @@ class SmartCardReader
             Log.e(TAG, "Card Structure noOfCardVehicleUnitRecords is: ${noOfVarModel.noOfCardVehicleUnitRecords}")
             
 
-        } else if (hexValues.size >= 3) {
+        } else if (hexValues.size = 10) { // Gen 1 Case
+            noOfVarModel.noOfEventsPerType = hexValues[3].toInt(16)
+            noOfVarModel.noOfFaultsPerType = hexValues[4].toInt(16)
+            noOfVarModel.cardActivityLengthRange = (hexValues[5] + hexValues[6]).toInt(16)
+            noOfVarModel.noOfCardVehicleRecords = (hexValues[7] + hexValues[8]).toInt(16)
+            noOfVarModel.noOfCardPlaceRecords = hexValues[9].toInt(16)
+
+            Log.e(TAG, "Card Structure noOfEventsPerType is: ${noOfVarModel.noOfEventsPerType}")
+            Log.e(TAG, "Card Structure noOfFaultsPerType is: ${noOfVarModel.noOfFaultsPerType}")
+            Log.e(TAG, "Card Structure cardActivityLengthRange is: ${noOfVarModel.cardActivityLengthRange}")
+            Log.e(TAG, "Card Structure noOfCardVehicleRecords is: ${noOfVarModel.noOfCardVehicleRecords}")
+            Log.e(TAG, "Card Structure noOfCardPlaceRecords is: ${noOfVarModel.noOfCardPlaceRecords}")
+            
+
+        } else if (hexValues.size >= 3) { // Card Generation & Version
             val generationHex = hexValues[1]
             val versionHex = hexValues[2] 
 
