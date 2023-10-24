@@ -289,7 +289,11 @@ class SmartCardReader
                 && apdu.isCertificat) {
                     isEndOfData = true
                     tempOffset = if (treatedAPDU.offset == 0) treatedAPDU.offset else treatedAPDU.offset - 1
-                    treatedAPDU.length -= 1
+                    if (treatedAPDU.length > apdu.lengthMin) {
+                        treatedAPDU.length = apdu.lengthMin
+                    } else {
+                        treatedAPDU.length -= 1
+                    }
                     read(
                         cardChannel,
                         apdu,
