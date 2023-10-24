@@ -3,11 +3,16 @@ package com.benjamin.horner.flutter_acs_card_reader
 import com.benjamin.horner.flutter_acs_card_reader.ApduCommand
 import com.benjamin.horner.flutter_acs_card_reader.CardGen
 import com.benjamin.horner.flutter_acs_card_reader.NoOfVarModel
+import com.benjamin.horner.flutter_acs_card_reader.NoOfVariablesEnum
+import kotlin.math.floor
+import android.util.Log
 
 // JavaX
 import javax.smartcardio.CardChannel
 
 class ApduCommandListGenerator {
+    private val TAG: String = "ApduCommandListGenerator"
+
     /* APDU Commands */
     private val APDU_SELECT_BY_MF_OR_EF: String = "00 A4 02 0C 02"
     private val APDU_SELECT_BY_DF: String = "00 A4 04 0C 06"
@@ -192,36 +197,6 @@ class ApduCommandListGenerator {
             lengthMax = 53
         ),
         ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
-            name = "EF_EVENTS_DATA",
-            lengthMin = 1584,
-            lengthMax = 3168
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
-            name = "EF_FAULTS_DATA",
-            lengthMin = 576,
-            lengthMax = 1152
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
-            name = "EF_DRIVER_ACTIVITY_DATA",
-            lengthMin = 5548,
-            lengthMax = 13780
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
-            name = "EF_VEHICULES_USED",
-            lengthMin = 4024,
-            lengthMax = 5602
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
-            name = "EF_PLACES",
-            lengthMin = 1766,
-            lengthMax = 2354
-        ),
-        ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
             name = "EF_CURRENT_USAGE",
             lengthMin = 19,
@@ -232,12 +207,6 @@ class ApduCommandListGenerator {
             name = "EF_CONTROL_ACTIVITY_DATA",
             lengthMin = 46,
             lengthMax = 46
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 22",
-            name = "EF_SPECIFIC_CONDITIONS",
-            lengthMin = 282,
-            lengthMax = 562
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
@@ -254,18 +223,6 @@ class ApduCommandListGenerator {
             lengthMax = 341,
             needsSignature = false,
             isCertificat = true
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 23",
-            name = "EF_VEHICULEUNITS_USED",
-            lengthMin = 842,
-            lengthMax = 2002
-        ),
-        ApduCommand(
-            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 24",
-            name = "EF_GNSS_PLACES",
-            lengthMin = 3782,
-            lengthMax = 5042
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 01",
@@ -285,6 +242,128 @@ class ApduCommandListGenerator {
         ),
     )
 
+    private val variableApduCommandsList: List<ApduCommand> = listOf(
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
+            name = "EF_EVENTS_DATA",
+            lengthMin = 1584,
+            lengthMax = 3168,
+            noOfVarType = NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE,
+            remainingBytesMultiplier = 264
+
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
+            name = "EF_FAULTS_DATA",
+            lengthMin = 576,
+            lengthMax = 1152,
+            noOfVarType = NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE,
+            remainingBytesMultiplier = 48
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
+            name = "EF_DRIVER_ACTIVITY_DATA",
+            lengthMin = 5548,
+            lengthMax = 13780,
+            noOfVarType = NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE,
+            remainingBytesMultiplier = 1,
+            remainingExtraBytes = 4
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
+            name = "EF_VEHICULES_USED",
+            lengthMin = 4024,
+            lengthMax = 5602,
+            noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
+            remainingBytesMultiplier = 48,
+            remainingExtraBytes = 2
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
+            name = "EF_PLACES",
+            lengthMin = 1766,
+            lengthMax = 2354,
+            noOfVarType = NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS,
+            remainingBytesMultiplier = 21,
+            remainingExtraBytes = 2
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 22",
+            name = "EF_SPECIFIC_CONDITIONS",
+            lengthMin = 282,
+            lengthMax = 562,
+            noOfVarType = NoOfVariablesEnum.NO_OF_SPECIFIC_CONDITIONS_RECORDS,
+            remainingBytesMultiplier = 10,
+            remainingExtraBytes = 2
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 23",
+            name = "EF_VEHICULEUNITS_USED",
+            lengthMin = 842,
+            lengthMax = 2002,
+            noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_UNIT_RECORDS,
+            remainingBytesMultiplier = 15,
+            remainingExtraBytes = 2
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 24",
+            name = "EF_GNSS_PLACES",
+            lengthMin = 3782,
+            lengthMax = 5042,
+            noOfVarType = NoOfVariablesEnum.NO_OF_GNSS_RECORDS,
+            remainingBytesMultiplier = 15,
+            remainingExtraBytes = 2
+        ),
+    )
+
+    private fun calculateRemainingBytes(
+        apdu: ApduCommand,
+        noOfVar: Int
+    ): Int {
+        val totalBytes: Int = (noOfVar * apdu.remainingBytesMultiplier) + apdu.remainingExtraBytes
+        val offsetBytes: Int = totalBytes / 255
+        val maxReadLoops: Int = offsetBytes.toInt()
+        val remainIngBytes: Int = totalBytes - (maxReadLoops * 255)
+        Log.e(TAG, "totalBytes $totalBytes // offsetBytes $offsetBytes // maxReadLoops $maxReadLoops // remainIngBytes $remainIngBytes")
+        return remainIngBytes
+    }
+
+
+    private fun makeGen2List(
+        noOfVarModel: NoOfVarModel,
+    ): List<ApduCommand> {
+        val initialList: List<ApduCommand> = commonApduCommandList.plus(apduTG2List)
+        val updatedVariableApduCommandsList: MutableList<ApduCommand> = mutableListOf()
+
+        for (apdu in variableApduCommandsList) {
+            if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfEventsPerType)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfFaultsPerType)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleRecords)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardPlaceRecords)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.cardActivityLengthRange)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_GNSS_RECORDS) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfGNSSRecords)
+                updatedVariableApduCommandsList.add(apdu)
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_UNIT_RECORDS) {
+                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleUnitRecords)
+                updatedVariableApduCommandsList.add(apdu)
+            }
+        }
+
+        val commandList: List<ApduCommand> = initialList.plus(updatedVariableApduCommandsList)
+        return commandList
+    }
+
     val apduTG2V2List: List<ApduCommand> = listOf()
 
     fun cardVersionCommandList(): List<ApduCommand> {
@@ -295,10 +374,12 @@ class ApduCommandListGenerator {
         return commonApduCommandList.plus(cardGen2List)
     }
 
-    fun makeList(cardGen: CardGen, noOfVarModel: NoOfVarModel): List<ApduCommand> {
+    fun makeList(cardGen: CardGen,
+        noOfVarModel: NoOfVarModel,
+    ): List<ApduCommand> {
         when(cardGen) {
             CardGen.GEN1 -> return commonApduCommandList.plus(apduList)
-            CardGen.GEN2 -> return commonApduCommandList.plus(apduTG2List)
+            CardGen.GEN2 -> return makeGen2List(noOfVarModel)
             CardGen.GEN2V2 -> return commonApduCommandList.plus(apduTG2V2List)
             else -> return commonApduCommandList.plus(apduList)
         }

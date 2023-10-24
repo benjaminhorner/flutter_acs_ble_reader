@@ -6,5 +6,6 @@ data class NoOfVarModel (
     var noOfCardVehicleRecords: Int = 0,
     var noOfCardPlaceRecords: Int = 0,
     var cardActivityLengthRange: Int = 0,
-    var noOfGNSSRecords: Int = 0
+    var noOfGNSSRecords: Int = 0,
+    var noOfCardVehicleUnitRecords: Int = 0
 )

@@ -269,7 +269,7 @@ class SmartCardReader
             val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
             val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
-            Log.e(TAG, "Handle response: SW2 $remainingBytes // tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
+            Log.e(TAG, "${apdu.name} has status $status // remainingBytes: ${apdu.remainingBytes} // tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
 
             if (status == APDUReadResponseEnum.SUCCESS) {
                 treatedAPDU.length = 255
@@ -284,19 +284,31 @@ class SmartCardReader
                 }
             } else if (
                 status == APDUReadResponseEnum.P1_LENGTH_GREATER_THAN_EF || 
-                status == APDUReadResponseEnum.P1_PLUS_LENGTH_GREATER_THAN_EF && treatedAPDU.length > 0) {
-                    Log.e(TAG, "SW1 was $status and remaing bytes length: $remainingBytes")
+                status == APDUReadResponseEnum.P1_PLUS_LENGTH_GREATER_THAN_EF 
+                && treatedAPDU.length > 0
+                && apdu.isCertificat) {
                     isEndOfData = true
                     tempOffset = if (treatedAPDU.offset == 0) treatedAPDU.offset else treatedAPDU.offset - 1
                     treatedAPDU.length -= 1
-                    Log.e(TAG, "tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
                     read(
                         cardChannel,
                         apdu,
                         methodChannel,
                         tempOffset)
-            }
-            else {
+            } else if (
+                status == APDUReadResponseEnum.P1_LENGTH_GREATER_THAN_EF || 
+                status == APDUReadResponseEnum.P1_PLUS_LENGTH_GREATER_THAN_EF 
+                && treatedAPDU.length > 0
+                && !apdu.isCertificat) {
+                    isEndOfData = true
+                    tempOffset = if (treatedAPDU.offset == 0) treatedAPDU.offset else treatedAPDU.offset - 1
+                    treatedAPDU.length = apdu.remainingBytes
+                    read(
+                        cardChannel,
+                        apdu,
+                        methodChannel,
+                        tempOffset)
+            } else {
                 throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
             }
     }
@@ -367,16 +379,19 @@ class SmartCardReader
             val noOfCardVehicleRecordsHex = hexValues[7] + hexValues[8]
             val noOfCardPlaceRecordsHex = hexValues[9] + hexValues[10]
             val noOfGNSSRecords = hexValues[11] + hexValues[12]
+            val noOfCardVehicleUnitRecords = hexValues[15] + hexValues[16]
 
             Log.e(TAG, "Card Structure Hex is: $hexString")
             Log.e(TAG, "Card Structure Card Generation is: $generationHex")
             Log.e(TAG, "Card Structure Card version number is: $versionHex")
+
             Log.e(TAG, "Card Structure noOfEventsPerTypeHex is: $noOfEventsPerTypeHex")
             Log.e(TAG, "Card Structure noOfFaultsPerTypeHex is: $noOfFaultsPerTypeHex")
             Log.e(TAG, "Card Structure noOfCardVehicleRecordsHex is: $noOfCardVehicleRecordsHex")
             Log.e(TAG, "Card Structure noOfCardPlaceRecordsHex is: $noOfCardPlaceRecordsHex")
             Log.e(TAG, "Card Structure cardActivityLengthRange is: $cardActivityLengthRange")
             Log.e(TAG, "Card Structure noOfGNSSRecords is: $noOfGNSSRecords")
+            Log.e(TAG, "Card Structure noOfCardVehicleUnitRecords is: $noOfCardVehicleUnitRecords")
 
             setCardGenerationAndVersion(generationHex, versionHex)
 
@@ -385,12 +400,17 @@ class SmartCardReader
             noOfVarModel.cardActivityLengthRange = cardActivityLengthRange.toInt(16)
             noOfVarModel.noOfCardVehicleRecords = noOfCardVehicleRecordsHex.toInt(16)
             noOfVarModel.noOfCardPlaceRecords = noOfCardPlaceRecordsHex.toInt(16)
-            noOfVarModel.noOfGNSSRecords = noOfGNSSRecords.tonInt(16)
+            noOfVarModel.noOfGNSSRecords = noOfGNSSRecords.toInt(16)
+            noOfVarModel.noOfCardVehicleUnitRecords = noOfCardVehicleUnitRecords.toInt(16)
 
             Log.e(TAG, "Card Structure noOfEventsPerType is: ${noOfVarModel.noOfEventsPerType}")
             Log.e(TAG, "Card Structure noOfFaultsPerType is: ${noOfVarModel.noOfFaultsPerType}")
+            Log.e(TAG, "Card Structure cardActivityLengthRange is: ${noOfVarModel.cardActivityLengthRange}")
             Log.e(TAG, "Card Structure noOfCardVehicleRecords is: ${noOfVarModel.noOfCardVehicleRecords}")
             Log.e(TAG, "Card Structure noOfCardPlaceRecords is: ${noOfVarModel.noOfCardPlaceRecords}")
+            Log.e(TAG, "Card Structure noOfGNSSRecords is: ${noOfVarModel.noOfGNSSRecords}")
+            Log.e(TAG, "Card Structure noOfCardVehicleUnitRecords is: ${noOfVarModel.noOfCardVehicleUnitRecords}")
+            
 
         } else if (hexValues.size >= 3) {
             val generationHex = hexValues[1]
