@@ -55,6 +55,7 @@ private val DATA_TRANSFER_STATE_PENDING = "PENDING"
 private val DATA_TRANSFER_STATE_TRANSFERING = "TRANSFERING"
 private val DATA_TRANSFER_STATE_SUCCESS = "SUCCESS"
 private val DATA_TRANSFER_STATE_ERROR = "ERROR"
+private var UNABLE_TO_SIGN_APDU_EXCEPTION = "Unable to Sign APDU"
 private val deviceConnectionStatusNotifier = DeviceConnectionStatusNotifier()
 private val deviceNotifier = DeviceNotifier()
 private val hexToBytesHelper = HexHelper()
@@ -83,6 +84,8 @@ class SmartCardReader
     private var tempOffset: Int = 0
     private var isEndOfData: Boolean = false
     private var apduList: List<ApduCommand> = listOf()
+    private val maxSignatureLength: Int = 132
+    private var signatureLength: Int = 64
 
     fun connectToDevice(
         activity: Activity, 
@@ -193,16 +196,12 @@ class SmartCardReader
             try {
                 val responseData: ByteArray = response.data
                 val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
-                val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
                 if (status != APDUSelectResponseEnum.SUCCESS) {
                     throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
                 }
                 else if (apdu.isEF && apdu.needsHash) {
                     performHashCommand(cardChannel)
-                    if (apdu.needsSignature) {
-                        performSign(cardChannel)
-                    }
                     read(
                         cardChannel,
                         apdu,
@@ -270,7 +269,6 @@ class SmartCardReader
         ) {
             val responseData: ByteArray = response.data
             val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
-            val responseDataToString: String = hexToBytesHelper.convertHexToASCII(responseHex)
 
             Log.e(TAG, "${apdu.name} has status $status // remainingBytes: ${apdu.remainingBytes} // tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
 
@@ -378,6 +376,8 @@ class SmartCardReader
         val hexValues = hexString.split(" ")
         
         if (hexValues.size >= 17) { // Gen 2 Case
+            setCardGenerationAndVersion(hexValues[1], hexValues[2])
+
             noOfVarModel.noOfEventsPerType = hexValues[3].toInt(16)
             noOfVarModel.noOfFaultsPerType = hexValues[4].toInt(16)
             noOfVarModel.cardActivityLengthRange = (hexValues[5] + hexValues[6]).toInt(16)
@@ -386,6 +386,9 @@ class SmartCardReader
             noOfVarModel.noOfGNSSRecords = (hexValues[11] + hexValues[12]).toInt(16)
             noOfVarModel.noOfCardVehicleUnitRecords = (hexValues[15] + hexValues[16]).toInt(16)
 
+            Log.e(TAG, "Card Structure Hex is: $hexString")
+            Log.e(TAG, "Card Structure Card Generation is: ${hexValues[1]}")
+            Log.e(TAG, "Card Structure Card version number is: ${hexValues[2]}")
             Log.e(TAG, "Card Structure noOfEventsPerType is: ${noOfVarModel.noOfEventsPerType}")
             Log.e(TAG, "Card Structure noOfFaultsPerType is: ${noOfVarModel.noOfFaultsPerType}")
             Log.e(TAG, "Card Structure cardActivityLengthRange is: ${noOfVarModel.cardActivityLengthRange}")
@@ -393,15 +396,20 @@ class SmartCardReader
             Log.e(TAG, "Card Structure noOfCardPlaceRecords is: ${noOfVarModel.noOfCardPlaceRecords}")
             Log.e(TAG, "Card Structure noOfGNSSRecords is: ${noOfVarModel.noOfGNSSRecords}")
             Log.e(TAG, "Card Structure noOfCardVehicleUnitRecords is: ${noOfVarModel.noOfCardVehicleUnitRecords}")
-            
 
-        } else if (hexValues.size = 10) { // Gen 1 Case
+        } else if (hexValues.size == 10) { // Gen 1 Case
+        val generationHex = hexValues[1]
+            setCardGenerationAndVersion(hexValues[1], hexValues[2])
+
             noOfVarModel.noOfEventsPerType = hexValues[3].toInt(16)
             noOfVarModel.noOfFaultsPerType = hexValues[4].toInt(16)
             noOfVarModel.cardActivityLengthRange = (hexValues[5] + hexValues[6]).toInt(16)
             noOfVarModel.noOfCardVehicleRecords = (hexValues[7] + hexValues[8]).toInt(16)
             noOfVarModel.noOfCardPlaceRecords = hexValues[9].toInt(16)
 
+            Log.e(TAG, "Card Structure Hex is: $hexString")
+            Log.e(TAG, "Card Structure Card Generation is: ${hexValues[1]}")
+            Log.e(TAG, "Card Structure Card version number is: ${hexValues[2]}")
             Log.e(TAG, "Card Structure noOfEventsPerType is: ${noOfVarModel.noOfEventsPerType}")
             Log.e(TAG, "Card Structure noOfFaultsPerType is: ${noOfVarModel.noOfFaultsPerType}")
             Log.e(TAG, "Card Structure cardActivityLengthRange is: ${noOfVarModel.cardActivityLengthRange}")
@@ -410,14 +418,11 @@ class SmartCardReader
             
 
         } else if (hexValues.size >= 3) { // Card Generation & Version
-            val generationHex = hexValues[1]
-            val versionHex = hexValues[2] 
-
             Log.e(TAG, "Card Structure Hex is: $hexString")
-            Log.e(TAG, "Card Structure Card Generation is: $generationHex")
-            Log.e(TAG, "Card Structure Card version number is: $versionHex")
+            Log.e(TAG, "Card Structure Card Generation is: ${hexValues[1]}")
+            Log.e(TAG, "Card Structure Card version number is: ${hexValues[2]}")
 
-            setCardGenerationAndVersion(generationHex, versionHex)
+            setCardGenerationAndVersion(hexValues[1], hexValues[2])
         }
         else {
             throw Exception(HEX_DOES_NOT_CONTAIN_ENOUGH_BYTES)
@@ -442,7 +447,12 @@ class SmartCardReader
         ) {
             Log.e(TAG, "---------------------------------------------------")
             if (apdu.lengthMax <= 255) {
-                writeDataToC1BFile(hexString, methodChannel)
+                writeDataToC1BFile(
+                    hexString,
+                    apdu,
+                    methodChannel,
+                    cardChannel,
+                    apdu.needsSignature)
             } else if (apdu.name == treatedAPDU.name && !isEndOfData) {
                 treatedAPDU.data += hexString
                 if (tempOffset == 0) {
@@ -454,13 +464,21 @@ class SmartCardReader
                         treatedAPDU.offset)
                 }
             } else {
-                writeDataToC1BFile(hexString, methodChannel)
+                writeDataToC1BFile(
+                    hexString,
+                    apdu,
+                    methodChannel,
+                    cardChannel,
+                    apdu.needsSignature)
             }
     }
 
     private fun writeDataToC1BFile(
         hexString: String,
+        apdu: ApduCommand,
         methodChannel: MethodChannel,
+        cardChannel: CardChannel,
+        needsSignature: Boolean
     ) {
         treatedAPDU.data = hexString
         treatedAPDU.offset = 0
@@ -470,6 +488,10 @@ class SmartCardReader
         c1BFileData += "${treatedAPDU.name} "
         uploadSteps += 1
         currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
+
+        if (needsSignature) {
+            performSign(cardChannel, methodChannel, apdu, hexString)
+        }
 
         if (totalUploadSteps == uploadSteps) {
             dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_SUCCESS, methodChannel)
@@ -516,9 +538,71 @@ class SmartCardReader
         }
     }
 
-    private fun performSign() {
-        val TG1_SIGNATURE = "00 2A 9E 9A 80" // 128 bytes
-        var TG2_SIGNATURE: String? = null // 64…132 bytes
+    private fun handlePerformSignResponse(
+        response: ResponseAPDU,
+        status: APDUSignResponseEnum,
+        apdu: ApduCommand,
+        cardChannel: CardChannel,
+        methodChannel: MethodChannel,
+        apduResponse: String,
+    ) {
+        Log.e(TAG, "Perform sign status is $status")
+        if (status == APDUSignResponseEnum.SUCCESS) {
+            val responseData: ByteArray = response.data
+            val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
+            c1BFileData += "SIGNED ${apdu.name} "
+            Log.e(TAG, "Signature data is $responseHex")
+        } else if (signatureLength >= maxSignatureLength) {
+            throw Exception(UNABLE_TO_SIGN_APDU_EXCEPTION)
+        } else {
+            signatureLength += 1
+            performSign(
+                cardChannel,
+                methodChannel,
+                apdu,
+                apduResponse)
+        }
+    }
+
+    private fun performSign(
+        cardChannel: CardChannel,
+        methodChannel: MethodChannel, 
+        apdu: ApduCommand,
+        apduResponse: String,
+    ) {
+        Log.e(TAG, "Perform Sign for ${apdu.name}")
+        // cardStructureVersion
+        val TG1_SIGNATURE: String = "00 2A 9E 9A 80" // 128 bytes
+        var TG2_SIGNATURE: String = "00 2A 9E 9A ${hexToBytesHelper.byteLength(null, signatureLength)}" // 64…132 bytes
+
+        try {
+            var readCommand = if (cardStructureVersion == CardGen.GEN1) TG1_SIGNATURE else TG2_SIGNATURE
+
+            Log.e(TAG, "Trying to sign APDU with command: ${readCommand}")
+
+            val commandAPDU = CommandAPDU(
+                hexToBytesHelper.hexStringToByteArray(readCommand)
+            )
+            val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
+            val sw1: Int? = response.getSW1()
+            val sw2: Int? = response.getSW2()
+
+            if (sw1 == null && sw2 == null) {
+                Log.e(TAG, "Unable to sign APDU because sw1 and sw2 are NULL")
+                throw Exception(UNABLE_TO_SIGN_APDU_EXCEPTION)
+            } else {
+                handlePerformSignResponse(
+                    response,
+                    apduResponseHelper.signResponseIntToAPDUReadResponse(sw1),
+                    apdu,
+                    cardChannel,
+                    methodChannel,
+                    apduResponse,
+                )
+            }
+        } catch (e: Exception) {
+            throw e
+        }
 
     }
 
