@@ -83,56 +83,74 @@ class ApduCommandListGenerator {
             name = "EF_APP_IDENTIFICATION",
             lengthMin = 10,
             lengthMax = 10
+            hexName = "050100",
+            hexNameSigned = "050101"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 20",
             name = "EF_IDENTIFICATION",
             lengthMin = 143,
-            lengthMax = 143
+            lengthMax = 143,
+            hexName = "052000",
+            hexNameSigned = "052001"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 0E",
             name = "EF_CARD_DOWNLOAD",
             lengthMin = 4,
-            lengthMax = 4
+            lengthMax = 4,
+            hexName = "050E00",
+            hexNameSigned = "050E01"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 21",
             name = "EF_DRIVING_LICENCE_INFO",
             lengthMin = 53,
-            lengthMax = 53
+            lengthMax = 53,
+            hexName = "052100",
+            hexNameSigned = "052101"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
             name = "EF_CURRENT_USAGE",
             lengthMin = 19,
-            lengthMax = 19
+            lengthMax = 19,
+            hexName = "050700",
+            hexNameSigned = "050701"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 08",
             name = "EF_CONTROL_ACTIVITY_DATA",
             lengthMin = 46,
-            lengthMax = 46
+            lengthMax = 46,
+            hexName = "050800",
+            hexNameSigned = "050801"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 22",
             name = "EF_SPECIFIC_CONDITIONS",
             lengthMin = 280,
-            lengthMax = 280
+            lengthMax = 280,
+            hexName = "052200",
+            hexNameSigned = "052201"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
             name = "EF_CARD_CERTIFICATE",
             lengthMin = 194,
             lengthMax = 194,
-            needsSignature = false
+            needsSignature = false,
+            hexName = "C10000",
+            hexNameSigned = "C10001"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
             name = "EF_CA_CERTIFICATE",
             lengthMin = 194,
             lengthMax = 194,
-            needsSignature = false
+            needsSignature = false,
+            hexName = "C10800",
+            hexNameSigned = "C10801"
         )
     )
 
@@ -146,37 +164,49 @@ class ApduCommandListGenerator {
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
             name = "EF_APP_IDENTIFICATION",
             lengthMin = 17,
-            lengthMax = 17
+            lengthMax = 17,
+            hexName = "050102",
+            hexNameSigned = "050103"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 20",
             name = "EF_IDENTIFICATION",
             lengthMin = 143,
-            lengthMax = 143
+            lengthMax = 143,
+            hexName = "052002",
+            hexNameSigned = "052003"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 0E",
             name = "EF_CARD_DOWNLOAD",
             lengthMin = 4,
-            lengthMax = 4
+            lengthMax = 4,
+            hexName = "050E02",
+            hexNameSigned = "050E03"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 21",
             name = "EF_DRIVING_LICENCE_INFO",
             lengthMin = 53,
-            lengthMax = 53
+            lengthMax = 53,
+            hexName = "052102",
+            hexNameSigned = "052103"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
             name = "EF_CURRENT_USAGE",
             lengthMin = 19,
-            lengthMax = 19
+            lengthMax = 19,
+            hexName = "050702",
+            hexNameSigned = "050703"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 08",
             name = "EF_CONTROL_ACTIVITY_DATA",
             lengthMin = 46,
-            lengthMax = 46
+            lengthMax = 46,
+            hexName = "050802",
+            hexNameSigned = "050803"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 01",
@@ -184,7 +214,8 @@ class ApduCommandListGenerator {
             lengthMin = 204,
             lengthMax = 341,
             needsSignature = false,
-            isCertificat = true
+            isCertificat = true,
+            hexName = "C10102"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
@@ -192,7 +223,8 @@ class ApduCommandListGenerator {
             lengthMin = 204,
             lengthMax = 341,
             needsSignature = false,
-            isCertificat = true
+            isCertificat = true,
+            hexName = "C10002"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
@@ -200,7 +232,8 @@ class ApduCommandListGenerator {
             lengthMin = 204,
             lengthMax = 341,
             needsSignature = false,
-            isCertificat = true
+            isCertificat = true,
+            hexName = "C10802"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 09",
@@ -208,7 +241,8 @@ class ApduCommandListGenerator {
             lengthMin = 204,
             lengthMax = 341,
             needsSignature = false,
-            isCertificat = true
+            isCertificat = true,
+            hexName = "C10902"
         ),
     )
 
@@ -219,7 +253,9 @@ class ApduCommandListGenerator {
             lengthMin = 864,
             lengthMax = 1728,
             noOfVarType = NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE,
-            remainingBytesMultiplier = 144
+            remainingBytesMultiplier = 144,
+            hexName = "050200",
+            hexNameSigned = "050201"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
@@ -227,7 +263,9 @@ class ApduCommandListGenerator {
             lengthMin = 576,
             lengthMax = 1152,
             noOfVarType = NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE,
-            remainingBytesMultiplier = 48
+            remainingBytesMultiplier = 48,
+            hexName = "050300",
+            hexNameSigned = "050301"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
@@ -236,7 +274,9 @@ class ApduCommandListGenerator {
             lengthMax = 13780,
             noOfVarType = NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE,
             remainingBytesMultiplier = 1,
-            remainingExtraBytes = 4
+            remainingExtraBytes = 4,
+            hexName = "050400",
+            hexNameSigned = "050401"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
@@ -245,7 +285,9 @@ class ApduCommandListGenerator {
             lengthMax = 6202,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
             remainingBytesMultiplier = 31,
-            remainingExtraBytes = 2
+            remainingExtraBytes = 2,
+            hexName = "050500",
+            hexNameSigned = "050501"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
@@ -254,7 +296,9 @@ class ApduCommandListGenerator {
             lengthMax = 1121,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS,
             remainingBytesMultiplier = 10,
-            remainingExtraBytes = 1
+            remainingExtraBytes = 1,
+            hexName = "050600",
+            hexNameSigned = "050601"
         ),
     )
     
@@ -265,7 +309,9 @@ class ApduCommandListGenerator {
             lengthMin = 1584,
             lengthMax = 3168,
             noOfVarType = NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE,
-            remainingBytesMultiplier = 264
+            remainingBytesMultiplier = 264,
+            hexName = "050202",
+            hexNameSigned = "050203"
 
         ),
         ApduCommand(
@@ -274,7 +320,9 @@ class ApduCommandListGenerator {
             lengthMin = 576,
             lengthMax = 1152,
             noOfVarType = NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE,
-            remainingBytesMultiplier = 48
+            remainingBytesMultiplier = 48,
+            hexName = "050302",
+            hexNameSigned = "050303"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
@@ -283,7 +331,9 @@ class ApduCommandListGenerator {
             lengthMax = 13780,
             noOfVarType = NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE,
             remainingBytesMultiplier = 1,
-            remainingExtraBytes = 4
+            remainingExtraBytes = 4,
+            hexName = "050402",
+            hexNameSigned = "050403"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
@@ -292,7 +342,9 @@ class ApduCommandListGenerator {
             lengthMax = 5602,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
             remainingBytesMultiplier = 48,
-            remainingExtraBytes = 2
+            remainingExtraBytes = 2,
+            hexName = "050502",
+            hexNameSigned = "050503"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
@@ -301,7 +353,9 @@ class ApduCommandListGenerator {
             lengthMax = 2354,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS,
             remainingBytesMultiplier = 21,
-            remainingExtraBytes = 2
+            remainingExtraBytes = 2,
+            hexName = "050602",
+            hexNameSigned = "050603"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 22",
@@ -310,7 +364,9 @@ class ApduCommandListGenerator {
             lengthMax = 562,
             noOfVarType = NoOfVariablesEnum.NO_OF_SPECIFIC_CONDITIONS_RECORDS,
             remainingBytesMultiplier = 10,
-            remainingExtraBytes = 2
+            remainingExtraBytes = 2,
+            hexName = "052202",
+            hexNameSigned = "052203"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 23",
@@ -319,7 +375,9 @@ class ApduCommandListGenerator {
             lengthMax = 2002,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_UNIT_RECORDS,
             remainingBytesMultiplier = 15,
-            remainingExtraBytes = 2
+            remainingExtraBytes = 2,
+            hexName = "052302",
+            hexNameSigned = "052303"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 24",
@@ -328,7 +386,9 @@ class ApduCommandListGenerator {
             lengthMax = 5042,
             noOfVarType = NoOfVariablesEnum.NO_OF_GNSS_RECORDS,
             remainingBytesMultiplier = 15,
-            remainingExtraBytes = 2
+            remainingExtraBytes = 2,
+            hexName = "052402",
+            hexNameSigned = "052403"
         ),
     )
 

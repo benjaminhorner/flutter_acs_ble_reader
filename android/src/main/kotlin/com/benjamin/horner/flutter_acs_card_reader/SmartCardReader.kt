@@ -484,8 +484,10 @@ class SmartCardReader
         treatedAPDU.offset = 0
         tempOffset = 0
         isEndOfData = false
-        // c1BFileData += treatedAPDU.data
+
+        c1BFileData += treatedAPDU.data
         c1BFileData += "${treatedAPDU.name} "
+        
         uploadSteps += 1
         currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
 
