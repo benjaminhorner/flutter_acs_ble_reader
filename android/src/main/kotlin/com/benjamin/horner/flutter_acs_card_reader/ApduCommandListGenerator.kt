@@ -82,7 +82,7 @@ class ApduCommandListGenerator {
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
             name = "EF_APP_IDENTIFICATION",
             lengthMin = 10,
-            lengthMax = 10
+            lengthMax = 10,
             hexName = "050100",
             hexNameSigned = "050101"
         ),
@@ -132,7 +132,8 @@ class ApduCommandListGenerator {
             lengthMin = 280,
             lengthMax = 280,
             hexName = "052200",
-            hexNameSigned = "052201"
+            hexNameSigned = "052201",
+            remainingBytes = 25
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
@@ -484,9 +485,19 @@ class ApduCommandListGenerator {
     ): List<ApduCommand> {
         when(cardGen) {
             CardGen.GEN1 -> return makeGen1List(noOfVarModel)
-            CardGen.GEN2 -> return makeGen2List(noOfVarModel)
+            CardGen.GEN2 -> return makeGen1List(noOfVarModel).plus(makeGen2List(noOfVarModel))
             CardGen.GEN2V2 -> return commonApduCommandList.plus(apduTG2V2List)
             else -> return commonApduCommandList.plus(apduList)
         }
+    }
+
+    fun calculateTotalUploadSteps(apduList: List<ApduCommand>): Int {
+        val cleanList: MutableList<ApduCommand> = mutableListOf()
+        for (apdu in apduList) {
+            if (apdu.isEF) {
+               cleanList.add(apdu) 
+            }
+        }
+        return cleanList.size
     }
 }

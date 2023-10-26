@@ -82,7 +82,7 @@ class HexHelper {
     fun byteLength(apdu: ApduCommand? = null, length: Int = 0): String {
         if (apdu == null && length > 0) {
             return padHex(Integer.toHexString(length))
-        } else if (apdu!!.lengthMin == apdu!!.lengthMax) {
+        } else if (apdu!!.lengthMin == apdu!!.lengthMax && apdu!!.lengthMax <= 255) {
             return padHex(Integer.toHexString(apdu!!.lengthMin))
         } else if (length > 0) {
             return padHex(Integer.toHexString(length))

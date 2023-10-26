@@ -19,6 +19,7 @@ import com.benjamin.horner.flutter_acs_card_reader.APDUReadResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.APDUHashResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.APDUSignResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.ApduData
+import com.benjamin.horner.flutter_acs_card_reader.StringHelper
 
 /// Flutter
 import io.flutter.plugin.common.MethodChannel
@@ -66,6 +67,7 @@ private val dataTransferStateNotifier = DataTransferStateNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
 private val apduResponseHelper = APDUResponseHelper()
 private val dataTransferNotifier = DataTransferNotifier()
+private val stringHelper = StringHelper()
 
 class SmartCardReader
     (private val methodChannel: MethodChannel) {
@@ -76,6 +78,7 @@ class SmartCardReader
     private var mFactory: TerminalFactory? = null
     private var mHandler: Handler = Handler()
     private var cardStructureVersion: CardGen? = null
+    private var signatureVersion: CardGen? = null
     private var noOfVarModel: NoOfVarModel = NoOfVarModel()
     private var totalUploadSteps: Int = 0
     private var uploadSteps: Int = 0
@@ -169,7 +172,7 @@ class SmartCardReader
             }
 
             apduList = apduCommandListGenerator.makeList(cardStructureVersion!!, noOfVarModel)
-            totalUploadSteps = apduList.size - 2
+            totalUploadSteps = apduCommandListGenerator.calculateTotalUploadSteps(apduList)
             totalReadStepsStatusNotifier.updateState(totalUploadSteps, methodChannel) // Remove MF
             dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_TRANSFERING, methodChannel)
             select(cardChannel)
@@ -184,6 +187,7 @@ class SmartCardReader
         Log.e(TAG, "${e.message}")
         disconnectCard(methodChannel)
         dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_ERROR, methodChannel)
+        currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
     }
 
     private fun handleSelectAPDUResponse(
@@ -215,6 +219,8 @@ class SmartCardReader
                         methodChannel,
                         treatedAPDU.offset,
                         getCardVersion)
+                } else if (apdu.name.contains("DF")) {
+                    signatureVersion = if (apdu.name.contains("G2")) CardGen.GEN2 else CardGen.GEN1
                 }
             }
             catch (e: Exception) {
@@ -485,9 +491,11 @@ class SmartCardReader
         tempOffset = 0
         isEndOfData = false
 
-        c1BFileData += treatedAPDU.data
-        c1BFileData += "${treatedAPDU.name} "
+        buildC1BDataKey(treatedAPDU.data, apdu)
+        // c1BFileData += " ${treatedAPDU.data} "
+        c1BFileData += " DATA "
         
+
         uploadSteps += 1
         currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
 
@@ -502,6 +510,18 @@ class SmartCardReader
         Log.e(TAG, "${treatedAPDU.name} uploadSteps: $uploadSteps")
         Log.e(TAG, "c1BFileData $c1BFileData")
         Log.e(TAG, "---------------------------------------------------")
+    }
+
+    private fun buildC1BDataKey(
+        hexString: String,
+        apdu: ApduCommand,
+        isSignature: Boolean = false,
+    ) {
+        if (isSignature) {
+            c1BFileData += "SIGNATURE ${treatedAPDU.name} Data length is ${hexString.length}"
+        } else {
+            c1BFileData += "${treatedAPDU.name} Data length is ${stringHelper.removeWhitespaces(hexString).length/2} //"
+        }
     }
 
     private fun handleHashAPDUResponse(
@@ -552,7 +572,11 @@ class SmartCardReader
         if (status == APDUSignResponseEnum.SUCCESS) {
             val responseData: ByteArray = response.data
             val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
-            c1BFileData += "SIGNED ${apdu.name} "
+
+            buildC1BDataKey(responseHex, apdu, true)
+
+            c1BFileData += "// SIGN Data === Sign Data //"
+
             Log.e(TAG, "Signature data is $responseHex")
         } else if (signatureLength >= maxSignatureLength) {
             throw Exception(UNABLE_TO_SIGN_APDU_EXCEPTION)
@@ -573,12 +597,11 @@ class SmartCardReader
         apduResponse: String,
     ) {
         Log.e(TAG, "Perform Sign for ${apdu.name}")
-        // cardStructureVersion
         val TG1_SIGNATURE: String = "00 2A 9E 9A 80" // 128 bytes
         var TG2_SIGNATURE: String = "00 2A 9E 9A ${hexToBytesHelper.byteLength(null, signatureLength)}" // 64…132 bytes
 
         try {
-            var readCommand = if (cardStructureVersion == CardGen.GEN1) TG1_SIGNATURE else TG2_SIGNATURE
+            var readCommand = if (signatureVersion == CardGen.GEN1) TG1_SIGNATURE else TG2_SIGNATURE
 
             Log.e(TAG, "Trying to sign APDU with command: ${readCommand}")
 
