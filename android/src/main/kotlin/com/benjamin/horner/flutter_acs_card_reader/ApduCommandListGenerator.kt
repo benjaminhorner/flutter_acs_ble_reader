@@ -82,54 +82,54 @@ class ApduCommandListGenerator {
             name = "DF_TACHOGRAPH",
             isEF = false
         ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
-        //     name = "EF_APP_IDENTIFICATION",
-        //     lengthMin = 10,
-        //     lengthMax = 10,
-        //     hexName = "05 01 00",
-        //     hexNameSigned = "05 01 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 20",
-        //     name = "EF_IDENTIFICATION",
-        //     lengthMin = 143,
-        //     lengthMax = 143,
-        //     hexName = "05 20 00",
-        //     hexNameSigned = "05 20 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 0E",
-        //     name = "EF_CARD_DOWNLOAD",
-        //     lengthMin = 4,
-        //     lengthMax = 4,
-        //     hexName = "05 0E 00",
-        //     hexNameSigned = "05 0E 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 21",
-        //     name = "EF_DRIVING_LICENCE_INFO",
-        //     lengthMin = 53,
-        //     lengthMax = 53,
-        //     hexName = "05 21 00",
-        //     hexNameSigned = "05 21 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
-        //     name = "EF_CURRENT_USAGE",
-        //     lengthMin = 19,
-        //     lengthMax = 19,
-        //     hexName = "05 07 00",
-        //     hexNameSigned = "05 07 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 08",
-        //     name = "EF_CONTROL_ACTIVITY_DATA",
-        //     lengthMin = 46,
-        //     lengthMax = 46,
-        //     hexName = "05 08 00",
-        //     hexNameSigned = "05 08 01"
-        // ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
+            name = "EF_APP_IDENTIFICATION",
+            lengthMin = 10,
+            lengthMax = 10,
+            hexName = "05 01 00",
+            hexNameSigned = "05 01 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 20",
+            name = "EF_IDENTIFICATION",
+            lengthMin = 143,
+            lengthMax = 143,
+            hexName = "05 20 00",
+            hexNameSigned = "05 20 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 0E",
+            name = "EF_CARD_DOWNLOAD",
+            lengthMin = 4,
+            lengthMax = 4,
+            hexName = "05 0E 00",
+            hexNameSigned = "05 0E 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 21",
+            name = "EF_DRIVING_LICENCE_INFO",
+            lengthMin = 53,
+            lengthMax = 53,
+            hexName = "05 21 00",
+            hexNameSigned = "05 21 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
+            name = "EF_CURRENT_USAGE",
+            lengthMin = 19,
+            lengthMax = 19,
+            hexName = "05 07 00",
+            hexNameSigned = "05 07 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 08",
+            name = "EF_CONTROL_ACTIVITY_DATA",
+            lengthMin = 46,
+            lengthMax = 46,
+            hexName = "05 08 00",
+            hexNameSigned = "05 08 01"
+        ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 22",
             name = "EF_SPECIFIC_CONDITIONS",
@@ -137,26 +137,26 @@ class ApduCommandListGenerator {
             lengthMax = 280,
             hexName = "05 22 00",
             hexNameSigned = "05 22 01",
-            remainingBytes = 25
+            remainingBytes = 24
         ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
-        //     name = "EF_CARD_CERTIFICATE",
-        //     lengthMin = 194,
-        //     lengthMax = 194,
-        //     needsSignature = false,
-        //     hexName = "C10000",
-        //     hexNameSigned = "C1 00 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
-        //     name = "EF_CA_CERTIFICATE",
-        //     lengthMin = 194,
-        //     lengthMax = 194,
-        //     needsSignature = false,
-        //     hexName = "C1 08 00",
-        //     hexNameSigned = "C1 08 01"
-        // )
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
+            name = "EF_CARD_CERTIFICATE",
+            lengthMin = 194,
+            lengthMax = 194,
+            needsSignature = false,
+            hexName = "C10000",
+            hexNameSigned = "C1 00 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
+            name = "EF_CA_CERTIFICATE",
+            lengthMin = 194,
+            lengthMax = 194,
+            needsSignature = false,
+            hexName = "C1 08 00",
+            hexNameSigned = "C1 08 01"
+        )
     )
 
     private val apduTG2List: List<ApduCommand> = listOf(
@@ -252,59 +252,59 @@ class ApduCommandListGenerator {
     )
 
     private val gen1VariableApduCommandsList: List<ApduCommand> = listOf(
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
-        //     name = "EF_EVENTS_DATA",
-        //     lengthMin = 864,
-        //     lengthMax = 1728,
-        //     noOfVarType = NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE,
-        //     remainingBytesMultiplier = 144,
-        //     hexName = "05 02 00",
-        //     hexNameSigned = "05 02 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
-        //     name = "EF_FAULTS_DATA",
-        //     lengthMin = 576,
-        //     lengthMax = 1152,
-        //     noOfVarType = NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE,
-        //     remainingBytesMultiplier = 48,
-        //     hexName = "05 03 00",
-        //     hexNameSigned = "05 03 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
-        //     name = "EF_DRIVER_ACTIVITY_DATA",
-        //     lengthMin = 5548,
-        //     lengthMax = 13780,
-        //     noOfVarType = NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE,
-        //     remainingBytesMultiplier = 1,
-        //     remainingExtraBytes = 4,
-        //     hexName = "05 04 00",
-        //     hexNameSigned = "05 04 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
-        //     name = "EF_VEHICULES_USED",
-        //     lengthMin = 2606,
-        //     lengthMax = 6202,
-        //     noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
-        //     remainingBytesMultiplier = 31,
-        //     remainingExtraBytes = 2,
-        //     hexName = "05 05 00",
-        //     hexNameSigned = "05 05 01"
-        // ),
-        // ApduCommand(
-        //     selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
-        //     name = "EF_PLACES",
-        //     lengthMin = 841,
-        //     lengthMax = 1121,
-        //     noOfVarType = NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS,
-        //     remainingBytesMultiplier = 10,
-        //     remainingExtraBytes = 1,
-        //     hexName = "05 06 00",
-        //     hexNameSigned = "05 06 01"
-        // ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 02",
+            name = "EF_EVENTS_DATA",
+            lengthMin = 864,
+            lengthMax = 1728,
+            noOfVarType = NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE,
+            remainingBytesMultiplier = 144,
+            hexName = "05 02 00",
+            hexNameSigned = "05 02 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 03",
+            name = "EF_FAULTS_DATA",
+            lengthMin = 576,
+            lengthMax = 1152,
+            noOfVarType = NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE,
+            remainingBytesMultiplier = 48,
+            hexName = "05 03 00",
+            hexNameSigned = "05 03 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
+            name = "EF_DRIVER_ACTIVITY_DATA",
+            lengthMin = 5548,
+            lengthMax = 13780,
+            noOfVarType = NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE,
+            remainingBytesMultiplier = 1,
+            remainingExtraBytes = 4,
+            hexName = "05 04 00",
+            hexNameSigned = "05 04 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
+            name = "EF_VEHICULES_USED",
+            lengthMin = 2606,
+            lengthMax = 6202,
+            noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
+            remainingBytesMultiplier = 31,
+            remainingExtraBytes = 2,
+            hexName = "05 05 00",
+            hexNameSigned = "05 05 01"
+        ),
+        ApduCommand(
+            selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
+            name = "EF_PLACES",
+            lengthMin = 841,
+            lengthMax = 1121,
+            noOfVarType = NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS,
+            remainingBytesMultiplier = 10,
+            remainingExtraBytes = 1,
+            hexName = "05 06 00",
+            hexNameSigned = "05 06 01"
+        ),
     )
     
     private val gen2VariableApduCommandsList: List<ApduCommand> = listOf(
@@ -387,10 +387,10 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 24",
             name = "EF_GNSS_PLACES",
-            lengthMin = 3782,
-            lengthMax = 5042,
+            lengthMin = 4538,
+            lengthMax = 6050,
             noOfVarType = NoOfVariablesEnum.NO_OF_GNSS_RECORDS,
-            remainingBytesMultiplier = 15,
+            remainingBytesMultiplier = 18,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 24 02",
             hexNameSigned = "05 24 03"
@@ -402,10 +402,9 @@ class ApduCommandListGenerator {
         noOfVar: Int
     ): Int {
         val totalBytes: Int = (noOfVar * apdu.remainingBytesMultiplier) + apdu.remainingExtraBytes
-        val offsetBytes: Int = totalBytes / 255
-        val maxReadLoops: Int = offsetBytes.toInt()
-        val remainIngBytes: Int = totalBytes - (maxReadLoops * 255)
-        Log.e(TAG, "totalBytes $totalBytes // offsetBytes $offsetBytes // maxReadLoops $maxReadLoops // remainIngBytes $remainIngBytes")
+        val maxReadLoops: Int = totalBytes / 256
+        val remainIngBytes: Int = totalBytes - (maxReadLoops * 256)
+        Log.e(TAG, "${apdu.name} totalBytes $totalBytes // maxReadLoops $maxReadLoops // remainIngBytes $remainIngBytes")
         return remainIngBytes
     }
 
@@ -416,22 +415,29 @@ class ApduCommandListGenerator {
         val initialList: List<ApduCommand> = commonApduCommandList.plus(apduList)
         val updatedVariableApduCommandsList: MutableList<ApduCommand> = mutableListOf()
 
+        Log.e("$TAG makeGen1List", "$noOfVarModel")
+
         for (apdu in gen1VariableApduCommandsList) {
             if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfEventsPerType)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfFaultsPerType)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleRecords)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardPlaceRecords)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.cardActivityLengthRange)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
             }
         }
 
@@ -449,24 +455,31 @@ class ApduCommandListGenerator {
             if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfEventsPerType)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfFaultsPerType)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleRecords)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardPlaceRecords)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.cardActivityLengthRange)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_GNSS_RECORDS) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfGNSSRecords)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_UNIT_RECORDS) {
                 apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleUnitRecords)
                 updatedVariableApduCommandsList.add(apdu)
+                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
             }
         }
 
@@ -489,7 +502,7 @@ class ApduCommandListGenerator {
     ): List<ApduCommand> {
         when(cardGen) {
             CardGen.GEN1 -> return makeGen1List(noOfVarModel)
-            CardGen.GEN2 -> return makeGen1List(noOfVarModel) //return makeGen1List(noOfVarModel).plus(makeGen2List(noOfVarModel))
+            CardGen.GEN2 -> return makeGen1List(noOfVarModel).plus(makeGen2List(noOfVarModel))
             CardGen.GEN2V2 -> return commonApduCommandList.plus(apduTG2V2List)
             else -> return commonApduCommandList.plus(apduList)
         }

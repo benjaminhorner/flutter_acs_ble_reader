@@ -36,7 +36,7 @@ class APDUResponseHelper {
                 return APDUReadResponseEnum.OFFSET_PLUS_LENGTH_GREATER_THAN_EF
             }
             0x6B -> {
-                return APDUReadResponseEnum.OFFSET_LENGTH_GREATER_THAN_EF
+                return APDUReadResponseEnum.OFFSET_GREATER_THAN_EF
             }
             0x65 -> {
                 return APDUReadResponseEnum.FILE_ATTRIBUT_INTEGRITY_ERROR

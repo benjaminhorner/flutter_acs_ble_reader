@@ -43,8 +43,19 @@ class HexHelper {
         }
     }
 
-    fun calculateLengthToHex(hexString: String): String {
+    fun calculateLengthOfHex(hexString: String): String {
         val length: Int = hexString.length/2
+        val hex: String = padHex(Integer.toHexString(length)).toUpperCase()
+
+        if (hex.length > 2) {
+            return hex
+        } else {
+            val paddedHex = padHex("00$hex")
+            return paddedHex
+        }
+    }
+
+    fun calculateLengthToHex(length: Int): String {
         val hex: String = padHex(Integer.toHexString(length)).toUpperCase()
 
         if (hex.length > 2) {

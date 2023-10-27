@@ -84,7 +84,6 @@ class SmartCardReader
     private var uploadSteps: Int = 0
     private var c1BFileData: String = ""
     private var treatedAPDU = ApduData()
-    private var tempOffset: Int = 0
     private var isEndOfData: Boolean = false
     private var apduList: List<ApduCommand> = listOf()
     private val maxSignatureLength: Int = 132
@@ -206,14 +205,12 @@ class SmartCardReader
                         cardChannel,
                         apdu,
                         methodChannel,
-                        treatedAPDU.offset,
                         getCardVersion)
                 } else if (apdu.isEF) {
                     read(
                         cardChannel,
                         apdu,
                         methodChannel,
-                        treatedAPDU.offset,
                         getCardVersion)
                 } else if (apdu.name.contains("DF")) {
                     signatureVersion = if (apdu.name.contains("G2")) CardGen.GEN2 else CardGen.GEN1
@@ -272,7 +269,7 @@ class SmartCardReader
             val responseData: ByteArray = response.data
             val responseHex: String = hexToBytesHelper.byteArrayToHexString(responseData)
 
-            Log.e("$TAG handleReadAPDUResponse", "${apdu.name} has status $status // remainingBytes: ${apdu.remainingBytes} // tempOffset $tempOffset // treatedAPDU.offset: ${treatedAPDU.offset}")
+            Log.e("$TAG handleReadAPDUResponse", "${apdu.name} has status $status // remainingBytes: ${apdu.remainingBytes} // treatedAPDU.offset: ${treatedAPDU.offset}")
 
             if (status == APDUReadResponseEnum.SUCCESS) {
                 treatedAPDU.length = 255
@@ -287,12 +284,11 @@ class SmartCardReader
                     )
                 }
             } else if (
-                status == APDUReadResponseEnum.OFFSET_LENGTH_GREATER_THAN_EF || 
+                status == APDUReadResponseEnum.OFFSET_GREATER_THAN_EF || 
                 status == APDUReadResponseEnum.OFFSET_PLUS_LENGTH_GREATER_THAN_EF 
                 && treatedAPDU.length > 0
                 && apdu.isCertificat) {
-                    isEndOfData = true
-                    tempOffset = if (treatedAPDU.offset == 0) treatedAPDU.offset else treatedAPDU.offset - 1
+                    setTreatedApduOffset(status)
                     if (treatedAPDU.length > apdu.lengthMin) {
                         treatedAPDU.length = apdu.lengthMin
                     } else {
@@ -301,39 +297,49 @@ class SmartCardReader
                     read(
                         cardChannel,
                         apdu,
-                        methodChannel,
-                        tempOffset)
+                        methodChannel)
             } else if (
-                status == APDUReadResponseEnum.OFFSET_LENGTH_GREATER_THAN_EF || 
+                status == APDUReadResponseEnum.OFFSET_GREATER_THAN_EF || 
                 status == APDUReadResponseEnum.OFFSET_PLUS_LENGTH_GREATER_THAN_EF 
                 && treatedAPDU.length > 0
                 && !apdu.isCertificat) {
-                    isEndOfData = true
-                    tempOffset = if (treatedAPDU.offset == 0) treatedAPDU.offset else treatedAPDU.offset - 1
+                    setTreatedApduOffset(status)
                     treatedAPDU.length = apdu.remainingBytes
                     read(
                         cardChannel,
                         apdu,
-                        methodChannel,
-                        tempOffset,
-                    )
+                        methodChannel)
             } else {
                 throw Exception(UNABLE_TO_TRANSMIT_APDU_EXCEPTION)
             }
+    }
+
+    private fun setTreatedApduOffset(status: APDUReadResponseEnum) {
+        Log.e("$TAG setTreatedApduOffset", "BEFORE ${treatedAPDU.offset}")
+        isEndOfData = true
+        if (status == APDUReadResponseEnum.OFFSET_GREATER_THAN_EF){
+            Log.e("$TAG setTreatedApduOffset", "Change Offset?")
+            if (treatedAPDU.offset > 0 ) {
+                treatedAPDU.offset -= 1
+            }
+        } else if (status == APDUReadResponseEnum.OFFSET_PLUS_LENGTH_GREATER_THAN_EF) {
+            // Offset -1 and use remainingBytes
+        }
+        Log.e("$TAG setTreatedApduOffset", "AFTER ${treatedAPDU.offset}")
     }
 
     private fun read(
         cardChannel: CardChannel, 
         apdu: ApduCommand,
         methodChannel: MethodChannel,
-        offset: Int = 0,
         getCardVersion: Boolean = false,
         ) {
             try {
-                var p1: String = String.format("%02d", offset)
+                var hexString: String = Integer.toHexString(treatedAPDU.offset)
+                val p1 = if (hexString.length == 1) "0$hexString" else hexString
                 var readCommand = "00 B0 ${p1} 00 ${hexToBytesHelper.byteLength(apdu, treatedAPDU.length)}"
 
-                Log.e(TAG, "Reading APDU ${apdu.name}, offset value: $offset, command: ${readCommand}")
+                Log.e(TAG, "Reading APDU ${apdu.name}, offset value: ${treatedAPDU.offset}, command: ${readCommand}")
 
                 val commandAPDU = CommandAPDU(
                     hexToBytesHelper.hexStringToByteArray(readCommand)
@@ -458,26 +464,26 @@ class SmartCardReader
                     cardChannel,
                     apdu.needsSignature,
                 )
-            } else if (treatedAPDU.data.length == 0 && !isEndOfData) {
+            } else if (treatedAPDU.name == apdu.name && !isEndOfData) {
                 if (treatedAPDU.data.length > 0) {
                     treatedAPDU.data += " $hexString"
                 } else {
                     treatedAPDU.data += hexString
                 }
 
-                Log.e("$TAG writeDataToC1BFile", "1 ${apdu.name} == ${treatedAPDU.name} // treatedAPDU.data = ${treatedAPDU.data} // tempOffset $tempOffset")
+                Log.e("$TAG writeDataToC1BFile", "1 ${apdu.name} == ${treatedAPDU.name} // treatedAPDU.data = ${treatedAPDU.data} // treatedAPDU.offset ${treatedAPDU.offset}")
 
-                if (tempOffset == 0) {
-                    treatedAPDU.offset += 1
-                    read(
-                        cardChannel,
-                        apdu,
-                        methodChannel,
-                        treatedAPDU.offset,
-                    )
-                }
+                treatedAPDU.offset += 1
+                read(
+                    cardChannel,
+                    apdu,
+                    methodChannel,
+                )
             } else {
-                Log.e("$TAG writeDataToC1BFile", "2 ${apdu.name} == ${treatedAPDU.name} // treatedAPDU.data = ${treatedAPDU.data} // tempOffset $tempOffset")
+                treatedAPDU.data += " $hexString"
+                
+                Log.e("$TAG writeDataToC1BFile", "2 ${apdu.name} == ${treatedAPDU.name} // treatedAPDU.data = ${treatedAPDU.data} // treatedAPDU.offset ${treatedAPDU.offset}")
+
                 writeDataToC1BFile(
                     apdu,
                     methodChannel,
@@ -493,11 +499,7 @@ class SmartCardReader
         cardChannel: CardChannel,
         needsSignature: Boolean
     ) {
-        treatedAPDU.offset = 0
-        tempOffset = 0
-        isEndOfData = false
-
-        Log.e("$TAG writeDataToC1BFile", "${treatedAPDU.name} has data treatedAPDU.data ${treatedAPDU.data}")
+        Log.e("$TAG writeDataToC1BFile", "${treatedAPDU.name} has data ? ${treatedAPDU.data.length > 0}")
 
         buildC1BDataKey(apdu)
         c1BFileData += "DATA"
@@ -508,6 +510,8 @@ class SmartCardReader
             c1BFileData += " ${treatedAPDU.data}"
         }
         
+        treatedAPDU.offset = 0
+        isEndOfData = false
         treatedAPDU.data = ""
         uploadSteps += 1
         currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
@@ -533,7 +537,7 @@ class SmartCardReader
             c1BFileData += " "
         }
 
-        val length: String = hexToBytesHelper.calculateLengthToHex(cleanupHexString(treatedAPDU.data))
+        val length: String = hexToBytesHelper.calculateLengthOfHex(cleanupHexString(treatedAPDU.data))
 
         if (isSignature) {
             c1BFileData += "KEY ${apdu.name} ${apdu.hexNameSigned} $length "
