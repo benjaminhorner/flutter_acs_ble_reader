@@ -81,10 +81,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_blue_plus
-      sha256: "10dde8a0fd54c1c34139127183ef079b8ecb4957c222473684c2544808b0049f"
+      sha256: fccf1a72e3022453719d17c91e3701a3781e1eb27a9411f6b9ec2bcc41e68dfa
       url: "https://pub.dev"
     source: hosted
-    version: "1.15.5"
+    version: "1.20.3"
   flutter_driver:
     dependency: transitive
     description: flutter

@@ -1,0 +1,13 @@
+package com.benjamin.horner.flutter_acs_card_reader
+
+enum class NoOfVariablesEnum {
+    NO_OF_EVENTS_PER_TYPE,
+    NO_OF_FAULTS_PER_TYPE,
+    NO_OF_CARD_VEHICLE_RECORDS,
+    NO_OF_CARD_PLACE_RECORDS,
+    CARD_ACTIVITY_LENGTH_RANGE,
+    NO_OF_GNSS_RECORDS,
+    NO_OF_CARD_VEHICLE_UNIT_RECORDS,
+    NOT_A_VARIABLE,
+    NO_OF_SPECIFIC_CONDITIONS_RECORDS
+}
