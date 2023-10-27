@@ -41,6 +41,7 @@ class _MyAppState extends State<MyApp> {
   int _totalReadSteps = 0;
   int _currentReadStep = 0;
   DataTransferState _dataTransferState = DataTransferState.pending;
+  String _data = "";
 
   @override
   void initState() {
@@ -133,6 +134,7 @@ class _MyAppState extends State<MyApp> {
     // Listen to Data Transfer
     FlutterAcsCardReader.dataTransferStream.listen((String data) {
       setState(() {
+        _data = data;
         debugPrint("Received Data: $data");
       });
     });
@@ -175,6 +177,15 @@ class _MyAppState extends State<MyApp> {
               ),
               Text(
                   "Reading APDU Progress: ${_totalReadSteps > 0 ? ((_currentReadStep / _totalReadSteps) * 100).toInt() : 0}%"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text("Received data of length: ${_data.length}"),
+              const SizedBox(
+                height: 8,
+              ),
+              Text(
+                  "${_data.isNotEmpty ? _data.substring(0, 2) : 0} … ${_data.isNotEmpty ? _data.substring(_data.length - 2, _data.length) : 0}"),
               const SizedBox(
                 height: 8,
               ),

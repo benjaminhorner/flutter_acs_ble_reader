@@ -1,8 +1,11 @@
 package com.benjamin.horner.flutter_acs_card_reader
 
 import java.nio.charset.StandardCharsets
+import android.util.Log
 
 class HexHelper {
+    private val TAG = "HexHelper"
+
     fun byteArrayToHexString(buffer: ByteArray): String {
         var bufferString = ""
         for (i in buffer.indices) {
@@ -28,66 +31,27 @@ class HexHelper {
         return byteArray
     }
 
-    fun convertHexToASCII(hex: String): String {
-        var hex = hex.replace(" ", "") // Remove spaces
-        var ascii = ""
-        var str: String
-
-        // Convert hex string to "even" length
-        val rmd: Int
-        val length: Int
-        length = hex.length
-        rmd = length % 2
-        if (rmd == 1)
-            hex = "0$hex"
-
-        // split into two characters
-        var i = 0
-        while (i < hex.length - 1) {
-
-            // split the hex into pairs
-            val pair = hex.substring(i, i + 2)
-            // convert hex to decimal
-            val dec = Integer.parseInt(pair, 16)
-            str = checkCode(dec)
-            // ascii=ascii+" "+str
-            ascii += str
-            i += 2
-        }
-        return ascii
-    }
-
-    fun checkCode(dec: Int): String {
-        var str: String
-
-        // convert the decimal to character
-        str = dec.toChar().toString()
-
-        if (dec < 32 || dec in 127..160)
-            str = ""
-        return str
-    }
-
-    fun hexStringToAscii(hexString: String): String {
-        val sanitizedHex = hexString.replace(" ", "") // Remove spaces from the hex string
-        val result = StringBuilder()
-        for (i in 0 until sanitizedHex.length step 2) {
-            val hex = sanitizedHex.substring(i, i + 2)
-            val decimal = Integer.parseInt(hex, 16)
-            result.append(decimal.toChar())
-        }
-        return result.toString()
-    }
-
     fun byteLength(apdu: ApduCommand? = null, length: Int = 0): String {
         if (apdu == null && length > 0) {
             return padHex(Integer.toHexString(length))
         } else if (apdu!!.lengthMin == apdu!!.lengthMax && apdu!!.lengthMax <= 255) {
-            return padHex(Integer.toHexString(apdu!!.lengthMin))
+            return padHex(Integer.toHexString(apdu!!.lengthMin)).toUpperCase()
         } else if (length > 0) {
-            return padHex(Integer.toHexString(length))
+            return padHex(Integer.toHexString(length)).toUpperCase()
         } else {
-            return padHex(Integer.toHexString(255))
+            return padHex(Integer.toHexString(255)).toUpperCase()
+        }
+    }
+
+    fun calculateLengthToHex(hexString: String): String {
+        val length: Int = hexString.length/2
+        val hex: String = padHex(Integer.toHexString(length)).toUpperCase()
+
+        if (hex.length > 2) {
+            return hex
+        } else {
+            val paddedHex = padHex("00$hex")
+            return paddedHex
         }
     }
 

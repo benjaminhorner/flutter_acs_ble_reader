@@ -8,6 +8,7 @@ data class ApduCommand (
     var readCommand: String = "",
     var name: String = "",
     var hexName: String = "",
+    var hexNameGen2: String = "",
     var hexNameSigned: String = "",
     var lengthMin: Int = 0,
     var lengthMax: Int = 0,

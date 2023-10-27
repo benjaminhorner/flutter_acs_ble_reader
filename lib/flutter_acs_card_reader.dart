@@ -295,7 +295,7 @@ class FlutterAcsCardReader {
   }
 
   static CardTerminalType? _cardTerminalType(BluetoothDevice device) {
-    String name = device.localName;
+    String name = device.platformName;
 
     debugPrint("Found device with name $name");
 
