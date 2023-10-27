@@ -50,6 +50,8 @@ class FlutterAcsCardReader {
   static final StreamController<DataTransferState>
       _dataTransferStateEventController =
       StreamController<DataTransferState>.broadcast();
+  static final StreamController<String> _dataTransferController =
+      StreamController<String>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -68,6 +70,8 @@ class FlutterAcsCardReader {
       _currentReadStepStateEventController.stream;
   static Stream<DataTransferState> get dataTransferStateStream =>
       _dataTransferStateEventController.stream;
+  static Stream<String> get dataTransferStream =>
+      _dataTransferController.stream;
 
   /// Public
   ///
@@ -159,6 +163,15 @@ class FlutterAcsCardReader {
           debugPrintStack(stackTrace: stackTrace);
           debugPrint("[onUpdateDataTransferStateEvent] $exception");
         }
+      } else if (call.method == 'onReceiveDataEvent') {
+        try {
+          final dynamic data = call.arguments;
+          debugPrint("onReceiveDataEvent $data");
+          _dataTransferController.add(data);
+        } catch (exception, stackTrace) {
+          debugPrintStack(stackTrace: stackTrace);
+          debugPrint("[onReceiveDataEvent] $exception");
+        }
       }
     });
   }
@@ -178,7 +191,7 @@ class FlutterAcsCardReader {
   static Future<void> _scanForDevices(int timeoutSeconds,
       {required User user}) async {
     /// check adapter availability
-    if (await FlutterBluePlus.isAvailable == false) {
+    if (await FlutterBluePlus.isSupported == false) {
       debugPrint("Bluetooth not supported by this device");
       _bluetoothStatusController.add(BluetoothAdapterState.unavailable);
       return;
@@ -282,7 +295,7 @@ class FlutterAcsCardReader {
   }
 
   static CardTerminalType? _cardTerminalType(BluetoothDevice device) {
-    String name = device.localName;
+    String name = device.platformName;
 
     debugPrint("Found device with name $name");
 
