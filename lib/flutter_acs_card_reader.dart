@@ -20,6 +20,7 @@ export 'package:flutter_blue_plus/flutter_blue_plus.dart';
 export 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 export 'models/user.model.dart';
 export 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
+export 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 
 class FlutterAcsCardReader {
   static Timer? _timeOutTimer;
