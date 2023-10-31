@@ -540,6 +540,7 @@ class SmartCardReader
             Log.e(TAG, "c1BFileData md5Hash $md5HashKey")
             Log.e(TAG, "c1BFileData aesString for 'vrai' $aesTrueString")
             Log.e(TAG, "c1BFileData aesString for ${driver.agencyID!!} $aesAgencyIdString")
+            Log.e(TAG, "c1BFileData $c1BFileData")
         }
         Log.e(TAG, "${treatedAPDU.name} uploadSteps: $uploadSteps")
         Log.e(TAG, "---------------------------------------------------")
@@ -553,10 +554,17 @@ class SmartCardReader
             c1BFileData += " "
         }
 
-        val length: String = hexToBytesHelper.calculateLengthOfHex(cleanupHexString(treatedAPDU.data))
+        var length: String = hexToBytesHelper.calculateLengthOfHex(cleanupHexString(treatedAPDU.data))
 
         if (isSignature) {
-            c1BFileData += "${apdu.hexNameSigned} $length "
+            length = hexToBytesHelper.byteLength(null, signatureLength)
+        }
+
+        Log.e(TAG, "Length for ${apdu.name} 00 $length")
+
+        if (isSignature) {
+            c1BFileData += "${apdu.hexNameSigned} 00 $length "
+            // TODO: Signature length
         } else {
             var name = if (signatureVersion == CardGen.GEN1) apdu.hexName else apdu.hexNameGen2
             c1BFileData += "$name $length "
