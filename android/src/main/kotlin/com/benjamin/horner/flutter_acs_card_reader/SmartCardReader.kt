@@ -504,7 +504,6 @@ class SmartCardReader
         Log.e("$TAG writeDataToC1BFile", "${treatedAPDU.name} has data ? ${treatedAPDU.data.length > 0}")
 
         buildC1BDataKey(apdu)
-        c1BFileData += "DATA"
 
         if (c1BFileData.length == 0) {
             c1BFileData += treatedAPDU.data
@@ -557,10 +556,10 @@ class SmartCardReader
         val length: String = hexToBytesHelper.calculateLengthOfHex(cleanupHexString(treatedAPDU.data))
 
         if (isSignature) {
-            c1BFileData += "KEY ${apdu.name} ${apdu.hexNameSigned} $length "
+            c1BFileData += "${apdu.hexNameSigned} $length "
         } else {
             var name = if (signatureVersion == CardGen.GEN1) apdu.hexName else apdu.hexNameGen2
-            c1BFileData += "KEY ${apdu.name} $name $length "
+            c1BFileData += "$name $length "
         }
     }
 
@@ -619,7 +618,6 @@ class SmartCardReader
 
             buildC1BDataKey(apdu, true)
 
-            c1BFileData += "SIGNATURE "
             c1BFileData += responseHex
 
         } else if (signatureLength >= maxSignatureLength) {
