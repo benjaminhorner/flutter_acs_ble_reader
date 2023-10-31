@@ -556,15 +556,16 @@ class SmartCardReader
 
         var length: String = hexToBytesHelper.calculateLengthOfHex(cleanupHexString(treatedAPDU.data))
 
-        if (isSignature) {
+        if (isSignature && apdu.cardGen != CardGen.GEN1) {
             length = hexToBytesHelper.byteLength(null, signatureLength)
+        } else if (isSignature) {
+            length = hexToBytesHelper.byteLength(null, 128)
         }
 
         Log.e(TAG, "Length for ${apdu.name} 00 $length")
 
         if (isSignature) {
             c1BFileData += "${apdu.hexNameSigned} 00 $length "
-            // TODO: Signature length
         } else {
             var name = if (signatureVersion == CardGen.GEN1) apdu.hexName else apdu.hexNameGen2
             c1BFileData += "$name $length "

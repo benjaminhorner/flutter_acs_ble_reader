@@ -66,13 +66,15 @@ class ApduCommandListGenerator {
             selectCommand = "${APDU_SELECT_BY_DF} FF 53 4D 52 44 54",
             name = "DF_TACHOGRAPH_G2",
             isEF = false,
-            needsSignature = false
+            needsSignature = false,
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
             name = "EF_APP_IDENTIFICATION",
             lengthMin = 17,
-            lengthMax = 17
+            lengthMax = 17,
+            cardGen = CardGen.GEN2
         ),
     )
 
@@ -163,7 +165,8 @@ class ApduCommandListGenerator {
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_DF} FF 53 4D 52 44 54",
             name = "DF_TACHOGRAPH_G2",
-            isEF = false
+            isEF = false,
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 01",
@@ -171,7 +174,8 @@ class ApduCommandListGenerator {
             lengthMin = 17,
             lengthMax = 17,
             hexNameGen2 = "05 01 02",
-            hexNameSigned = "05 01 03"
+            hexNameSigned = "05 01 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 20",
@@ -179,7 +183,8 @@ class ApduCommandListGenerator {
             lengthMin = 143,
             lengthMax = 143,
             hexNameGen2 = "05 20 02",
-            hexNameSigned = "05 20 03"
+            hexNameSigned = "05 20 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 0E",
@@ -187,7 +192,8 @@ class ApduCommandListGenerator {
             lengthMin = 4,
             lengthMax = 4,
             hexNameGen2 = "05 0E 02",
-            hexNameSigned = "05 0E 03"
+            hexNameSigned = "05 0E 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 21",
@@ -195,7 +201,8 @@ class ApduCommandListGenerator {
             lengthMin = 53,
             lengthMax = 53,
             hexNameGen2 = "05 21 02",
-            hexNameSigned = "05 21 03"
+            hexNameSigned = "05 21 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 07",
@@ -203,7 +210,8 @@ class ApduCommandListGenerator {
             lengthMin = 19,
             lengthMax = 19,
             hexNameGen2 = "05 07 02",
-            hexNameSigned = "05 07 03"
+            hexNameSigned = "05 07 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 08",
@@ -211,7 +219,8 @@ class ApduCommandListGenerator {
             lengthMin = 46,
             lengthMax = 46,
             hexNameGen2 = "05 08 02",
-            hexNameSigned = "05 08 03"
+            hexNameSigned = "05 08 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 01",
@@ -220,7 +229,8 @@ class ApduCommandListGenerator {
             lengthMax = 341,
             needsSignature = false,
             isCertificat = true,
-            hexNameGen2 = "C1 01 02"
+            hexNameGen2 = "C1 01 02",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
@@ -229,7 +239,8 @@ class ApduCommandListGenerator {
             lengthMax = 341,
             needsSignature = false,
             isCertificat = true,
-            hexNameGen2 = "C1 00 02"
+            hexNameGen2 = "C1 00 02",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 08",
@@ -238,7 +249,8 @@ class ApduCommandListGenerator {
             lengthMax = 341,
             needsSignature = false,
             isCertificat = true,
-            hexNameGen2 = "C1 08 02"
+            hexNameGen2 = "C1 08 02",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 09",
@@ -247,7 +259,8 @@ class ApduCommandListGenerator {
             lengthMax = 341,
             needsSignature = false,
             isCertificat = true,
-            hexNameGen2 = "C1 09 02"
+            hexNameGen2 = "C1 09 02",
+            cardGen = CardGen.GEN2
         ),
     )
 
@@ -316,7 +329,8 @@ class ApduCommandListGenerator {
             noOfVarType = NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE,
             remainingBytesMultiplier = 264,
             hexNameGen2 = "05 02 02",
-            hexNameSigned = "05 02 03"
+            hexNameSigned = "05 02 03",
+            cardGen = CardGen.GEN2
 
         ),
         ApduCommand(
@@ -327,7 +341,8 @@ class ApduCommandListGenerator {
             noOfVarType = NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE,
             remainingBytesMultiplier = 48,
             hexNameGen2 = "05 03 02",
-            hexNameSigned = "05 03 03"
+            hexNameSigned = "05 03 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 04",
@@ -338,7 +353,8 @@ class ApduCommandListGenerator {
             remainingBytesMultiplier = 1,
             remainingExtraBytes = 4,
             hexNameGen2 = "05 04 02",
-            hexNameSigned = "05 04 03"
+            hexNameSigned = "05 04 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
@@ -349,7 +365,8 @@ class ApduCommandListGenerator {
             remainingBytesMultiplier = 48,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 05 02",
-            hexNameSigned = "05 05 03"
+            hexNameSigned = "05 05 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 06",
@@ -360,7 +377,8 @@ class ApduCommandListGenerator {
             remainingBytesMultiplier = 21,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 06 02",
-            hexNameSigned = "05 06 03"
+            hexNameSigned = "05 06 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 22",
@@ -371,7 +389,8 @@ class ApduCommandListGenerator {
             remainingBytesMultiplier = 10,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 22 02",
-            hexNameSigned = "05 22 03"
+            hexNameSigned = "05 22 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 23",
@@ -382,7 +401,8 @@ class ApduCommandListGenerator {
             remainingBytesMultiplier = 15,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 23 02",
-            hexNameSigned = "05 23 03"
+            hexNameSigned = "05 23 03",
+            cardGen = CardGen.GEN2
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 24",
@@ -393,7 +413,8 @@ class ApduCommandListGenerator {
             remainingBytesMultiplier = 18,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 24 02",
-            hexNameSigned = "05 24 03"
+            hexNameSigned = "05 24 03",
+            cardGen = CardGen.GEN2
         ),
     )
 
