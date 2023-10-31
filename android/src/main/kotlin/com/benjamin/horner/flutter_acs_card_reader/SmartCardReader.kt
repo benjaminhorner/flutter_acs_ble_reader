@@ -20,6 +20,8 @@ import com.benjamin.horner.flutter_acs_card_reader.APDUHashResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.APDUSignResponseEnum
 import com.benjamin.horner.flutter_acs_card_reader.ApduData
 import com.benjamin.horner.flutter_acs_card_reader.StringHelper
+import com.benjamin.horner.flutter_acs_card_reader.MD5Utils
+import com.benjamin.horner.flutter_acs_card_reader.AESUtils
 
 /// Flutter
 import io.flutter.plugin.common.MethodChannel
@@ -522,8 +524,23 @@ class SmartCardReader
 
         if (totalUploadSteps == uploadSteps) {
             dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_SUCCESS, methodChannel)
-            dataTransferNotifier.updateState(c1BFileData, methodChannel)
-            Log.e(TAG, "c1BFileData $c1BFileData")
+
+            val md5HashKey: String = MD5Utils.encryptStr()
+            val aesTrueString: String = AESUtils.encrypt("vrai", md5HashKey)
+            val aesAgencyIdString: String = AESUtils.encrypt(driver.agencyID!!, md5HashKey)
+            val aesDataString: String = AESUtils.encrypt(c1BFileData, md5HashKey)
+
+            val responseData: Map<String, Any> = mapOf(
+                "interim" to aesTrueString,
+                "agencyID" to aesAgencyIdString,
+                "fileData" to aesDataString
+            )
+        
+            dataTransferNotifier.updateState(responseData, methodChannel)
+
+            Log.e(TAG, "c1BFileData md5Hash $md5HashKey")
+            Log.e(TAG, "c1BFileData aesString for 'vrai' $aesTrueString")
+            Log.e(TAG, "c1BFileData aesString for ${driver.agencyID!!} $aesAgencyIdString")
         }
         Log.e(TAG, "${treatedAPDU.name} uploadSteps: $uploadSteps")
         Log.e(TAG, "---------------------------------------------------")

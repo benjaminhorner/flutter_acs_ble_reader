@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 // Import
@@ -9,6 +10,7 @@ import 'package:flutter_acs_card_reader/enums/card_terminal_type.enum.dart';
 import 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 import 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
+import 'package:flutter_acs_card_reader/models/data_transfer.model.dart';
 import 'enums/device_search_state.enum.dart';
 import 'models/user.model.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -21,6 +23,7 @@ export 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart'
 export 'models/user.model.dart';
 export 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 export 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
+export 'package:flutter_acs_card_reader/models/data_transfer.model.dart';
 
 class FlutterAcsCardReader {
   static Timer? _timeOutTimer;
@@ -51,8 +54,8 @@ class FlutterAcsCardReader {
   static final StreamController<DataTransferState>
       _dataTransferStateEventController =
       StreamController<DataTransferState>.broadcast();
-  static final StreamController<String> _dataTransferController =
-      StreamController<String>.broadcast();
+  static final StreamController<ResponseData> _dataTransferController =
+      StreamController<ResponseData>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -71,7 +74,7 @@ class FlutterAcsCardReader {
       _currentReadStepStateEventController.stream;
   static Stream<DataTransferState> get dataTransferStateStream =>
       _dataTransferStateEventController.stream;
-  static Stream<String> get dataTransferStream =>
+  static Stream<ResponseData> get dataTransferStream =>
       _dataTransferController.stream;
 
   /// Public
@@ -168,7 +171,7 @@ class FlutterAcsCardReader {
         try {
           final dynamic data = call.arguments;
           debugPrint("onReceiveDataEvent $data");
-          _dataTransferController.add(data);
+          _dataTransferController.add(_jsonStringToResponseData(data));
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
           debugPrint("[onReceiveDataEvent] $exception");
@@ -348,7 +351,17 @@ class FlutterAcsCardReader {
       'firstName': user.conducteur?.prenom,
       'email': user.conducteur?.email,
       'phone': user.conducteur?.tel,
+      'agencyID': user.agence?.iD.toString(),
     };
+  }
+
+  static ResponseData _jsonStringToResponseData(String response) {
+    try {
+      Map<String, dynamic> json = jsonDecode(response);
+      return ResponseData.fromJson(json);
+    } catch (exception) {
+      rethrow;
+    }
   }
 
   static DeviceConnectionState _deviceConnectionState(String state) {
