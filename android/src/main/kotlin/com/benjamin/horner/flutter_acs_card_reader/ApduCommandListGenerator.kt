@@ -32,7 +32,7 @@ class ApduCommandListGenerator {
             needsSignature = false,
             needsHash = false,
             hexName = "00 02 00",
-            hexNameGen2 = "00 02 02"
+            hexNameGen2 = "00 02 00"
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 00 05",
@@ -42,7 +42,7 @@ class ApduCommandListGenerator {
             needsSignature = false,
             needsHash = false,
             hexName = "00 05 00",
-            hexNameGen2 = "00 05 02"
+            hexNameGen2 = "00 05 00"
         )
     )
     
