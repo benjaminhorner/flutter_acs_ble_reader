@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_acs_card_reader/flutter_acs_card_reader.dart';
@@ -30,7 +31,6 @@ class _MyAppState extends State<MyApp> {
   );
   StreamSubscription<DeviceSearchState?>? _deviceSearchStateStream;
   StreamSubscription<DeviceConnectionState?>? _deviceConnectionStateStream;
-  StreamSubscription<BluetoothDevice?>? _deviceFoundEventStream;
   BluetoothAdapterState _bluetoothState = BluetoothAdapterState.unknown;
   DeviceSearchState _deviceActivity = DeviceSearchState.stopped;
   DeviceConnectionState _deviceConnectionState = DeviceConnectionState.pending;
@@ -52,7 +52,6 @@ class _MyAppState extends State<MyApp> {
   void dispose() {
     super.dispose();
     _deviceSearchStateStream?.cancel();
-    _deviceFoundEventStream?.cancel();
     _deviceConnectionStateStream?.cancel();
   }
 
@@ -131,9 +130,9 @@ class _MyAppState extends State<MyApp> {
     });
 
     // Listen to Data Transfer
-    FlutterAcsCardReader.dataTransferStream.listen((String data) {
+    FlutterAcsCardReader.dataTransferStream.listen((ResponseData data) {
       setState(() {
-        _data = data;
+        _data = data.toString();
         debugPrint("Received Data: $data");
       });
     });

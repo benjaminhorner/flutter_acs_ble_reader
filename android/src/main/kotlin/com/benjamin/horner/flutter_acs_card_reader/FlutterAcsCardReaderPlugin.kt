@@ -76,18 +76,20 @@ class FlutterAcsCardReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
         val firstName = driverMap["firstName"] as? String
         val email = driverMap["email"] as? String
         val phone = driverMap["phone"] as? String
+        val agencyID = driverMap["agencyID"] as? String
 
-        if (card != null && firstName != null && name != null && email != null && phone != null) {
+        if (card != null && firstName != null && name != null && email != null && phone != null && agencyID != null) {
             val driver = Driver(
-                carte = card,
-                nom = name,
-                prenom = firstName,
+                card = card,
+                name = name,
+                firstName = firstName,
                 email = email,
-                tel = phone
+                phone = phone,
+                agencyID = agencyID
             )
             smartCardReader.connectToDevice(activity, context, driver, cardTerminalType, timeoutSeconds)
         } else {
-            result.error("INVALID_DEVICE", "Invalid device address", null)
+            result.error("INVALID_DEVICE", "Invalid parameters $agencyID", null)
         }
     }
 
