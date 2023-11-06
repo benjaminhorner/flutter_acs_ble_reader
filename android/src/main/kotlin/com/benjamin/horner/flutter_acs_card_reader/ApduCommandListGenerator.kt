@@ -137,9 +137,11 @@ class ApduCommandListGenerator {
             name = "EF_SPECIFIC_CONDITIONS",
             lengthMin = 280,
             lengthMax = 280,
+            calculatedLength = 280,
+            maxReadLoops = 1,
             hexName = "05 22 00",
             hexNameSigned = "05 22 01",
-            remainingBytes = 24
+            remainingBytes = 25
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} C1 00",
@@ -298,7 +300,7 @@ class ApduCommandListGenerator {
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
-            name = "EF_VEHICULES_USED",
+            name = "EF_VEHICLES_USED",
             lengthMin = 2606,
             lengthMax = 6202,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
@@ -358,9 +360,9 @@ class ApduCommandListGenerator {
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 05",
-            name = "EF_VEHICULES_USED",
+            name = "EF_VEHICLES_USED",
             lengthMin = 4024,
-            lengthMax = 5602,
+            lengthMax = 9602,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS,
             remainingBytesMultiplier = 48,
             remainingExtraBytes = 2,
@@ -394,11 +396,11 @@ class ApduCommandListGenerator {
         ),
         ApduCommand(
             selectCommand = "${APDU_SELECT_BY_MF_OR_EF} 05 23",
-            name = "EF_VEHICULEUNITS_USED",
+            name = "EF_VEHICLEUNITS_USED",
             lengthMin = 842,
             lengthMax = 2002,
             noOfVarType = NoOfVariablesEnum.NO_OF_CARD_VEHICLE_UNIT_RECORDS,
-            remainingBytesMultiplier = 15,
+            remainingBytesMultiplier = 10,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 23 02",
             hexNameSigned = "05 23 03",
@@ -420,13 +422,24 @@ class ApduCommandListGenerator {
 
     private fun calculateRemainingBytes(
         apdu: ApduCommand,
-        noOfVar: Int
+        noOfVar: Int,
+        totalBytes: Int
     ): Int {
-        val totalBytes: Int = (noOfVar * apdu.remainingBytesMultiplier) + apdu.remainingExtraBytes
-        val maxReadLoops: Int = totalBytes / 256
-        val remainIngBytes: Int = totalBytes - (maxReadLoops * 256)
+        val maxReadLoops: Int = totalBytes / 255
+        val remainIngBytes: Int = totalBytes - (maxReadLoops * 255)
         Log.e(TAG, "${apdu.name} totalBytes $totalBytes // maxReadLoops $maxReadLoops // remainIngBytes $remainIngBytes")
         return remainIngBytes
+    }
+
+    private fun updateApdu(
+        noOfVar: Int,
+        apdu: ApduCommand,
+    ): ApduCommand {
+        val totalBytes: Int = (noOfVar * apdu.remainingBytesMultiplier) + apdu.remainingExtraBytes
+        apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVar, totalBytes)
+        apdu.calculatedLength = totalBytes
+        apdu.maxReadLoops = (totalBytes / 255)
+        return apdu
     }
 
 
@@ -436,29 +449,27 @@ class ApduCommandListGenerator {
         val initialList: List<ApduCommand> = commonApduCommandList.plus(apduList)
         val updatedVariableApduCommandsList: MutableList<ApduCommand> = mutableListOf()
 
-        Log.e("$TAG makeGen1List", "$noOfVarModel")
-
         for (apdu in gen1VariableApduCommandsList) {
             if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfEventsPerType)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfEventsPerType, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfFaultsPerType)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfFaultsPerType, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleRecords)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfCardVehicleRecords, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardPlaceRecords)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfCardPlaceRecords, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.cardActivityLengthRange)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen1List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.cardActivityLengthRange, apdu)
+                )
             }
         }
 
@@ -469,38 +480,40 @@ class ApduCommandListGenerator {
     private fun makeGen2List(
         noOfVarModel: NoOfVarModel,
     ): List<ApduCommand> {
-        val initialList: List<ApduCommand> = commonApduCommandList.plus(apduTG2List)
+        val initialList: List<ApduCommand> = apduTG2List
         val updatedVariableApduCommandsList: MutableList<ApduCommand> = mutableListOf()
+
+        Log.e("$TAG makeGen2List", "noOfVarModel // $noOfVarModel")
 
         for (apdu in gen2VariableApduCommandsList) {
             if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_EVENTS_PER_TYPE) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfEventsPerType)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfEventsPerType, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_FAULTS_PER_TYPE) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfFaultsPerType)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfFaultsPerType, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_RECORDS) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleRecords)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfCardVehicleRecords, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_PLACE_RECORDS) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardPlaceRecords)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfCardPlaceRecords, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.CARD_ACTIVITY_LENGTH_RANGE) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.cardActivityLengthRange)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.cardActivityLengthRange, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_GNSS_RECORDS) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfGNSSRecords)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfGNSSRecords, apdu)
+                )
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_UNIT_RECORDS) {
-                apdu.remainingBytes = calculateRemainingBytes(apdu, noOfVarModel.noOfCardVehicleUnitRecords)
-                updatedVariableApduCommandsList.add(apdu)
-                Log.e("$TAG makeGen2List", "${apdu.name} // ${apdu.remainingBytes}")
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfCardVehicleUnitRecords, apdu)
+                )
             }
         }
 
@@ -533,6 +546,7 @@ class ApduCommandListGenerator {
         val cleanList: MutableList<ApduCommand> = mutableListOf()
         for (apdu in apduList) {
             if (apdu.isEF) {
+                Log.e("$TAG calculateTotalUploadSteps", "${apdu.name}")
                cleanList.add(apdu) 
             }
         }
