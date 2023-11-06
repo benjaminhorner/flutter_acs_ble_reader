@@ -12,6 +12,8 @@ data class ApduCommand (
     var hexNameSigned: String = "",
     var lengthMin: Int = 0,
     var lengthMax: Int = 0,
+    var calculatedLength: Int = 0,
+    var maxReadLoops: Int = 0,
     var remainingBytes: Int = 0,
     var remainingBytesMultiplier: Int = 0,
     var remainingExtraBytes: Int = 0,
