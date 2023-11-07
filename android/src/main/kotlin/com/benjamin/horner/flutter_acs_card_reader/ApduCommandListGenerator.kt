@@ -149,7 +149,7 @@ class ApduCommandListGenerator {
             lengthMin = 194,
             lengthMax = 194,
             needsSignature = false,
-            hexName = "C10000",
+            hexName = "C1 00 00",
             hexNameSigned = "C1 00 01"
         ),
         ApduCommand(
@@ -388,7 +388,7 @@ class ApduCommandListGenerator {
             lengthMin = 282,
             lengthMax = 562,
             noOfVarType = NoOfVariablesEnum.NO_OF_SPECIFIC_CONDITIONS_RECORDS,
-            remainingBytesMultiplier = 10,
+            remainingBytesMultiplier = 5,
             remainingExtraBytes = 2,
             hexNameGen2 = "05 22 02",
             hexNameSigned = "05 22 03",
@@ -513,6 +513,10 @@ class ApduCommandListGenerator {
             } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_CARD_VEHICLE_UNIT_RECORDS) {
                 updatedVariableApduCommandsList.add(
                     updateApdu(noOfVarModel.noOfCardVehicleUnitRecords, apdu)
+                )
+            } else if (apdu.noOfVarType == NoOfVariablesEnum.NO_OF_SPECIFIC_CONDITIONS_RECORDS) {
+                updatedVariableApduCommandsList.add(
+                    updateApdu(noOfVarModel.noOfSpecificConditionsRecords, apdu)
                 )
             }
         }
