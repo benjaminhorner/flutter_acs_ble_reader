@@ -274,7 +274,7 @@ class SmartCardReader
 
             Log.e("$TAG handleReadAPDUResponse", "${apdu.name} responseData Length ${responseData.size}")
 
-            if (totalBytes <= 255) {
+            if (totalBytes <= 255 && !apdu.isCertificat) {
                 if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
                     setCardStructureVersionAndNoOfVariables(responseHex)
                 } else if (!getCardVersion) {
@@ -311,17 +311,19 @@ class SmartCardReader
         cardChannel: CardChannel,
         methodChannel: MethodChannel,
     ) {
-        if (status == APDUReadResponseEnum.SUCCESS) {
-            buildC1BFile(
-                responseHex,
-                apdu,
-                cardChannel,
-                methodChannel,
-            )
-        } else if (
-            status == APDUReadResponseEnum.OFFSET_GREATER_THAN_EF || 
-            status == APDUReadResponseEnum.OFFSET_PLUS_LENGTH_GREATER_THAN_EF) {
+        Log.e("$TAG handleCertificateResponse", "${apdu.name} status $status")
+
+        buildC1BFile(
+            hexString = responseHex,
+            apdu = apdu,
+            cardChannel = cardChannel,
+            methodChannel = methodChannel,
+            shouldWriteDataToFile = status != APDUReadResponseEnum.SUCCESS
+        )
+        if (
+            status == APDUReadResponseEnum.SUCCESS) {
                 Log.e("$TAG handleCertificateResponse", "${apdu.name} READ 3")
+                treatedAPDU.offset += 1
                 read(
                     cardChannel,
                     apdu,
@@ -359,19 +361,34 @@ class SmartCardReader
         }
     }
 
-    private fun calculateOffset(): String {
-        val hexString = Integer.toHexString(treatedAPDU.offset * 255)
+    private fun calculateOffset(apdu: ApduCommand): String {
+        var hexString: String = ""
+        if (apdu.isCertificat) {
+            hexString = if (treatedAPDU.offset > 0) Integer.toHexString(203 + treatedAPDU.offset) else "00"
+        } else {
+            hexString = Integer.toHexString(treatedAPDU.offset * 255)
+        }
         return hexToBytesHelper.padHex(hexString = hexString, desiredLength = 4)
     }
 
     private fun calculateExpectedLength(apdu: ApduCommand): String {
-        val bytes: Int = if (apdu.remainingBytes > 0 ) apdu.remainingBytes else apdu.lengthMin
-        
-        if (treatedAPDU.offset >= apdu.maxReadLoops || apdu.maxReadLoops == 0){
+        if (apdu.isCertificat) {
+            val bytes: Int = if (treatedAPDU.offset > 0) 1 else 204
             return hexToBytesHelper.byteLength(null, bytes)
         } else {
-            return "FF"
+            val bytes: Int = if (apdu.remainingBytes > 0 ) apdu.remainingBytes else apdu.lengthMin
+            if (treatedAPDU.offset >= apdu.maxReadLoops || apdu.maxReadLoops == 0){
+                return hexToBytesHelper.byteLength(null, bytes)
+            } else {
+                return "FF"
+            }
         }
+    }
+
+    private fun buildreadCommand(apdu: ApduCommand): String {
+        var readCommand = "00 B0 ${calculateOffset(apdu)} ${calculateExpectedLength(apdu)}"
+        Log.e("$TAG read", "Reading APDU ${apdu.name}, command: ${readCommand}")
+        return readCommand
     }
 
     private fun read(
@@ -381,16 +398,12 @@ class SmartCardReader
         getCardVersion: Boolean = false,
         ) {
             try {
-                var readCommand = "00 B0 ${calculateOffset()} ${calculateExpectedLength(apdu)}"
-
                 val commandAPDU = CommandAPDU(
-                    hexToBytesHelper.hexStringToByteArray(readCommand)
+                    hexToBytesHelper.hexStringToByteArray(buildreadCommand(apdu))
                 )
                 val response: ResponseAPDU = cardChannel.transmit(commandAPDU)
                 val sw1: Int? = response.getSW1()
                 val sw2: Int? = response.getSW2()
-
-                Log.e("$TAG read", "Reading APDU ${apdu.name}, command: ${readCommand}")
 
                 if (sw1 == null && sw2 == null) {
                     Log.e("$TAG read", "Unable to read card because sw1 and sw2 are NULL")
