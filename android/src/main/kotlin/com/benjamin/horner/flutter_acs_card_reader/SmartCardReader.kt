@@ -563,6 +563,11 @@ class SmartCardReader
         currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
 
         if (totalUploadSteps == uploadSteps) {
+            c1BFileData += " "
+            
+            val contains: Boolean = c1BFileData.contains("05 22 00 01 18")
+
+            Log.e("$TAG writeDataToC1BFile", "Contains 05 22 00 01 18 $contains")
             dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_SUCCESS, methodChannel)
 
             val md5HashKey: String = MD5Utils.encryptStr()
@@ -584,10 +589,6 @@ class SmartCardReader
         apdu: ApduCommand,
         isSignature: Boolean = false,
     ) {
-        if (c1BFileData.length > 0) {
-            c1BFileData += " "
-        }
-
         var length: String = hexToBytesHelper.calculateLengthOfHex(treatedAPDU.data)
 
         if (isSignature && apdu.cardGen != CardGen.GEN1) {
@@ -603,10 +604,10 @@ class SmartCardReader
         Log.e("$TAG buildC1BDataKey", "Length for (SIGN. ? $isSignature) ${apdu.name} ${length}")
 
         if (isSignature) {
-            c1BFileData += "${apdu.hexNameSigned} $length "
+            c1BFileData += " ${apdu.hexNameSigned} $length "
         } else {
             var name = if (signatureVersion == CardGen.GEN1) apdu.hexName else apdu.hexNameGen2
-            c1BFileData += "$name $length "
+            c1BFileData += " $name $length"
         }
     }
 
