@@ -450,6 +450,7 @@ class SmartCardReader
             noOfVarModel.noOfCardVehicleRecords = (hexValues[7] + hexValues[8]).toInt(16)
             noOfVarModel.noOfCardPlaceRecords = (hexValues[9] + hexValues[10]).toInt(16)
             noOfVarModel.noOfGNSSRecords = (hexValues[11] + hexValues[12]).toInt(16)
+            noOfVarModel.noOfSpecificConditionsRecords = (hexValues[13] + hexValues[14]).toInt(16)
             noOfVarModel.noOfCardVehicleUnitRecords = (hexValues[15] + hexValues[16]).toInt(16)
 
             Log.e(TAG, "Card Structure Hex is: $hexString")
@@ -462,6 +463,7 @@ class SmartCardReader
             Log.e(TAG, "Card Structure noOfCardPlaceRecords is: ${noOfVarModel.noOfCardPlaceRecords}")
             Log.e(TAG, "Card Structure noOfGNSSRecords is: ${noOfVarModel.noOfGNSSRecords}")
             Log.e(TAG, "Card Structure noOfCardVehicleUnitRecords is: ${noOfVarModel.noOfCardVehicleUnitRecords}")
+            Log.e(TAG, "Card Structure noOfSpecificConditionsRecords is: ${noOfVarModel.noOfSpecificConditionsRecords}")
 
         } else if (hexValues.size == 10) { // Gen 1 Case
         val generationHex = hexValues[1]
@@ -565,9 +567,9 @@ class SmartCardReader
         if (totalUploadSteps == uploadSteps) {
             c1BFileData += " "
             
-            val contains: Boolean = c1BFileData.contains("05 22 00 01 18")
+            val contains: Boolean = c1BFileData.contains("05 22 02 02 32")
 
-            Log.e("$TAG writeDataToC1BFile", "Contains 05 22 00 01 18 $contains")
+            Log.e("$TAG writeDataToC1BFile", "Contains 05 22 02 02 32 $contains")
             dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_SUCCESS, methodChannel)
 
             val md5HashKey: String = MD5Utils.encryptStr()
@@ -608,6 +610,7 @@ class SmartCardReader
         } else {
             var name = if (signatureVersion == CardGen.GEN1) apdu.hexName else apdu.hexNameGen2
             c1BFileData += " $name $length"
+            Log.e("$TAG buildC1BDataKey", "$name $length")
         }
     }
 
