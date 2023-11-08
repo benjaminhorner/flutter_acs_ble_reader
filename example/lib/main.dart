@@ -132,7 +132,7 @@ class _MyAppState extends State<MyApp> {
     FlutterAcsCardReader.dataTransferStream.listen((ResponseData data) {
       setState(() {
         _data = data.toString();
-        debugPrint("Received Data: $data");
+        debugPrint("Received Data: ${data.countryCode}");
       });
     });
   }

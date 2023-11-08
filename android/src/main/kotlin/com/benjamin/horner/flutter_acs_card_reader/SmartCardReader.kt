@@ -68,6 +68,7 @@ private val dataTransferStateNotifier = DataTransferStateNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
 private val apduResponseHelper = APDUResponseHelper()
 private val dataTransferNotifier = DataTransferNotifier()
+private val countryCodeHelper = CountryCodeHelper()
 
 class SmartCardReader
     (private val methodChannel: MethodChannel) {
@@ -87,6 +88,7 @@ class SmartCardReader
     private var apduList: List<ApduCommand> = listOf()
     private val maxSignatureLength: Int = 132
     private var signatureLength: Int = 64
+    private var countryCode: String = ""
 
     fun connectToDevice(
         activity: Activity, 
@@ -273,6 +275,11 @@ class SmartCardReader
             val totalBytes: Int = if (apdu.calculatedLength > 0) apdu.calculatedLength else apdu.lengthMin
 
             Log.e("$TAG handleReadAPDUResponse", "${apdu.name} responseData Length ${responseData.size}")
+
+            if (apdu.name == "EF_IDENTIFICATION" && responseHex.length > 0 && countryCode.length < 1) {
+                countryCode = countryCodeHelper.handleCountryCode(responseHex)
+                Log.e("$TAG handleEFResponse", "countryCode $countryCode")
+            }
 
             if (totalBytes <= 255 && !apdu.isCertificat) {
                 if (getCardVersion && apdu.name == "EF_APP_IDENTIFICATION") {
@@ -580,7 +587,8 @@ class SmartCardReader
             val responseData: Map<String, Any> = mapOf(
                 "interim" to aesTrueString,
                 "agencyID" to aesAgencyIdString,
-                "fileData" to aesDataString
+                "fileData" to aesDataString,
+                "countryCode" to countryCode
             )
         
             dataTransferNotifier.updateState(responseData, methodChannel)
