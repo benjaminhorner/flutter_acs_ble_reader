@@ -29,6 +29,7 @@ private let currentReadStepStatusNotifier = CurrentReadStepStatusNotifier()
 private let dataTransferNotifier = DataTransferNotifier()
 private let cardConnectionStateNotifier = CardConnectionStateNotifier()
 private let totalReadStepsStatusNotifier = TotalReadStepsStatusNotifier()
+private let logDataNotifier = LogDataNotifier()
 
 class SmartCardReader: BluetoothTerminalManagerDelegate {
     private var methodChannel: FlutterMethodChannel
@@ -48,6 +49,7 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
     private let maxSignatureLength: Int = 132
     private var signatureLength: Int = 64
     private var countryCode: String = ""
+    private var logData: String = ""
 
     init(methodChannel: FlutterMethodChannel) {
          self.methodChannel = methodChannel
@@ -67,6 +69,7 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
         mManager = BluetoothSmartCard.shared.manager
         guard let mManager = mManager else {
             print("\(TAG): connectToDevice mManager cannot be null")
+            logData += "[ERROR] [\(TAG)]/[connectToDevice] : mManager cannot be null\n"
             deviceConnectionStatusNotifier.updateState(state: DEVICE_CONNECTION_STATE_ERROR, channel: methodChannel)
             return
         }
@@ -75,6 +78,7 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
         mFactory = BluetoothSmartCard.shared.factory
         guard mFactory != nil else {
             print("\(TAG): connectToDevice mFactory cannot be null")
+            logData += "[ERROR] [\(TAG)]/[connectToDevice] : mFactory cannot be null\n"
             deviceConnectionStatusNotifier.updateState(state: DEVICE_CONNECTION_STATE_ERROR, channel: methodChannel)
             return
         }
@@ -136,10 +140,13 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
         
         print("\(TAG) - bluetoothTerminalManagerDidUpdateState message \(message)")
         
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : \(message)"
+        
         do {
             try startScan(timeoutSeconds: timeoutSeconds)
         } catch {
             print("\(TAG) - bluetoothTerminalManagerDidUpdateState error \(error.localizedDescription)")
+            logData += "[ERROR] [\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : \(error.localizedDescription)\n"
         }
     }
     
@@ -147,6 +154,7 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
         print("\(TAG) - bluetoothTerminalManager: CardTerminal discovered \(terminal.name)")
         if (terminal.name.contains("ACR")) {
             print("\(TAG) - bluetoothTerminalManager: Discovered card containing \(terminal.name)")
+            logData += "[ERROR] [\(TAG)]/[bluetoothTerminalManager] : \(terminal.name)\n"
             mManager?.stopScan()
             print("\(TAG) - bluetoothTerminalManager: Stopped scanning")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -722,6 +730,7 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
             noOfVarModel = NoOfVarModel()
             deviceConnectionStatusNotifier.updateState(state: CARD_STATE_DISCONNECTED, channel: methodChannel)
             cardConnectionStateNotifier.updateState(state: CARD_STATE_DISCONNECTED, channel: methodChannel)
+            logDataNotifier.updateState(logData: logData, channel: methodChannel)
         } catch {
             throw error
         }
