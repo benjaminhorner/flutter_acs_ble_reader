@@ -57,7 +57,7 @@ private val DATA_TRANSFER_STATE_PENDING = "PENDING"
 private val DATA_TRANSFER_STATE_TRANSFERING = "TRANSFERING"
 private val DATA_TRANSFER_STATE_SUCCESS = "SUCCESS"
 private val DATA_TRANSFER_STATE_ERROR = "ERROR"
-private var UNABLE_TO_SIGN_APDU_EXCEPTION = "Unable to Sign APDU"
+private val UNABLE_TO_SIGN_APDU_EXCEPTION = "Unable to Sign APDU"
 private val deviceConnectionStatusNotifier = DeviceConnectionStatusNotifier()
 private val deviceNotifier = DeviceNotifier()
 private val hexToBytesHelper = HexHelper()
@@ -68,6 +68,7 @@ private val dataTransferStateNotifier = DataTransferStateNotifier()
 private val apduCommandListGenerator = ApduCommandListGenerator()
 private val apduResponseHelper = APDUResponseHelper()
 private val dataTransferNotifier = DataTransferNotifier()
+private val logDataNotifier = LogDataNotifier()
 private val countryCodeHelper = CountryCodeHelper()
 
 class SmartCardReader
@@ -89,6 +90,7 @@ class SmartCardReader
     private val maxSignatureLength: Int = 132
     private var signatureLength: Int = 64
     private var countryCode: String = ""
+    private var logData: String = ""
 
     fun connectToDevice(
         activity: Activity, 
@@ -104,6 +106,7 @@ class SmartCardReader
         mManager = BluetoothSmartCard.getInstance(activity).getManager()
         if (mManager == null) {
             Log.e("$TAG connectToDevice", "mManager cannot be null")
+            logData += "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mManager cannot be null\n"
             deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
             return
         }
@@ -111,6 +114,7 @@ class SmartCardReader
         mFactory = BluetoothSmartCard.getInstance(activity).getFactory()
         if (mFactory == null) {
             Log.e("$TAG connectToDevice", "mFactory cannot be null")
+            logData += "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mFactory cannot be null\n"
             deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
             return
         }
@@ -128,6 +132,7 @@ class SmartCardReader
                         deviceNotifier.updateState(terminal, methodChannel)
                         deviceConnectionStatusNotifier.updateState("CONNECTED", methodChannel)
                         activity.runOnUiThread {
+                            logData += "[ERROR]/[SmartCardReader.kt]/[startScan] : Terminal name ${terminal.name}\n"
                             Log.e("$TAG startScan", terminal.name)
                             connectToCard(terminal, methodChannel)
                         }
@@ -136,6 +141,7 @@ class SmartCardReader
             })
         } else {
             Log.e("$TAG startScan", "mManager cannot be null at this point")
+            logData += "[ERROR]/[SmartCardReader.kt]/[startScan] : mManager cannot be null at this point\n"
             deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
             return
         }
@@ -184,6 +190,7 @@ class SmartCardReader
     }
 
     private fun handleError(e: Exception, methodChannel: MethodChannel) {
+        logData += "[ERROR]/[SmartCardReader.kt]/[handleError] : ${e.message}\n"
         Log.e("$TAG handleError", "${e.message}")
         disconnectCard(methodChannel)
         dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_ERROR, methodChannel)
@@ -740,5 +747,7 @@ class SmartCardReader
         noOfVarModel = NoOfVarModel()
         deviceConnectionStatusNotifier.updateState("DISCONNECTED", methodChannel)
         cardConnectionStateNotifier.updateState("DISCONNECTED", methodChannel)
+        logDataNotifier.updateState(logData, methodChannel)
+        logData = ""
     }
 }

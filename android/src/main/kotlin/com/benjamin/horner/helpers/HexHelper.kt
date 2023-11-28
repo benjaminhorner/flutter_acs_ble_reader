@@ -72,24 +72,4 @@ class HexHelper {
 
         return spacedHex.toUpperCase()
     }
-
-    // private fun padHex(hex: String): String {
-    //     val paddedHex = if (hex.length % 2 == 1) {
-    //         "0$hex"
-    //     } else {
-    //         hex
-    //     }
-
-    //     val spacedHex = buildString {
-    //         for (i in 0 until paddedHex.length step 2) {
-    //             if (i > 0) {
-    //                 append(' ') // Add a space after every 2 characters
-    //             }
-    //             append(paddedHex.substring(i, i + 2))
-    //         }
-    //     }
-
-    //     return spacedHex
-    // }
- 
 }

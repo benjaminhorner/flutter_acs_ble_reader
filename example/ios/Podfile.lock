@@ -1,0 +1,41 @@
+PODS:
+  - CryptoSwift (1.8.0)
+  - Flutter (1.0.0)
+  - flutter_acs_card_reader (0.7.2):
+    - CryptoSwift
+    - Flutter
+  - flutter_blue_plus (0.0.1):
+    - Flutter
+  - integration_test (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_acs_card_reader (from `.symlinks/plugins/flutter_acs_card_reader/ios`)
+  - flutter_blue_plus (from `.symlinks/plugins/flutter_blue_plus/ios`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+
+SPEC REPOS:
+  trunk:
+    - CryptoSwift
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_acs_card_reader:
+    :path: ".symlinks/plugins/flutter_acs_card_reader/ios"
+  flutter_blue_plus:
+    :path: ".symlinks/plugins/flutter_blue_plus/ios"
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+
+SPEC CHECKSUMS:
+  CryptoSwift: 52aaf3fce7337552863b1d952e408085f0e65030
+  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  flutter_acs_card_reader: 0663ed6874bb6dc2940e8d1b5957d2291d2b55cd
+  flutter_blue_plus: 4837da7d00cf5d441fdd6635b3a57f936778ea96
+  integration_test: 13825b8a9334a850581300559b8839134b124670
+
+PODFILE CHECKSUM: 70d9d25280d0dd177a5f637cdb0f0b0b12c6a189
+
+COCOAPODS: 1.14.2
