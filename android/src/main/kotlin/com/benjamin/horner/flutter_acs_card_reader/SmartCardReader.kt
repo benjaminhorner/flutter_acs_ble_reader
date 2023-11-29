@@ -125,6 +125,14 @@ class SmartCardReader
 
     private fun startScan(timeoutSeconds: Int) {
         if (mManager != null) {
+            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : System ID: ${BluetoothTerminalManager.DEVICE_INFO_SYSTEM_ID}\n"
+            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Model Number: ${BluetoothTerminalManager.DEVICE_INFO_MODEL_NUMBER_STRING}\n"
+            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Serial Number: ${BluetoothTerminalManager.DEVICE_INFO_SERIAL_NUMBER_STRING}\n"
+            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Firmware Revision: ${BluetoothTerminalManager.DEVICE_INFO_FIRMWARE_REVISION_STRING}\n"
+            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Hardware Revision: ${BluetoothTerminalManager.DEVICE_INFO_HARDWARE_REVISION_STRING}\n"
+            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Software Revision: ${BluetoothTerminalManager.DEVICE_INFO_SOFTWARE_REVISION_STRING}\n"
+            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Manufacturer Name: ${BluetoothTerminalManager.DEVICE_INFO_MANUFACTURER_NAME_STRING}\n"
+
             mManager!!.startScan(cardTerminalType, object : BluetoothTerminalManager.TerminalScanCallback {
                 override fun onScan(terminal: CardTerminal) {
                     if (terminal.name.contains("ACR")) {
@@ -132,7 +140,7 @@ class SmartCardReader
                         deviceNotifier.updateState(terminal, methodChannel)
                         deviceConnectionStatusNotifier.updateState("CONNECTED", methodChannel)
                         activity.runOnUiThread {
-                            logData += "[ERROR]/[SmartCardReader.kt]/[startScan] : Terminal name ${terminal.name}\n"
+                            logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Terminal name ${terminal.name}\n"
                             Log.e("$TAG startScan", terminal.name)
                             connectToCard(terminal, methodChannel)
                         }

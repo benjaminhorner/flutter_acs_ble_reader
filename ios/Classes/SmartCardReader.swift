@@ -138,9 +138,17 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
             break
         }
         
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : System Id: \(BluetoothTerminalManager.DeviceInfoType.systemId)\n"
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : Model Number: \(BluetoothTerminalManager.DeviceInfoType.modelNumberString)\n"
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : Serial Number: \(BluetoothTerminalManager.DeviceInfoType.serialNumberString)\n"
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : Firmware Revision:  \(BluetoothTerminalManager.DeviceInfoType.firmwareRevisionString)\n"
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : Hardware Revision:  \(BluetoothTerminalManager.DeviceInfoType.hardwareRevisionString)\n"
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : Software Revision  \(BluetoothTerminalManager.DeviceInfoType.softwareRevisionString)\n"
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : Manufacturer Name:  \(BluetoothTerminalManager.DeviceInfoType.manufacturerNameString)\n"
+        
         print("\(TAG) - bluetoothTerminalManagerDidUpdateState message \(message)")
         
-        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : \(message)"
+        logData += "[\(TAG)]/[bluetoothTerminalManagerDidUpdateState] : \(message)\n"
         
         do {
             try startScan(timeoutSeconds: timeoutSeconds)
