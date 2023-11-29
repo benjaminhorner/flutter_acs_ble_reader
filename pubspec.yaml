@@ -1,6 +1,6 @@
 name: flutter_acs_card_reader
 description: A Flutter plugin to read cards on Advanced Card Systems readers through BLE.
-version: 1.0.0
+version: 1.0.1
 
 environment:
   sdk: ">=3.0.5 <4.0.0"
