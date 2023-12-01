@@ -11,6 +11,7 @@ import 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 import 'package:flutter_acs_card_reader/enums/device_connection_state.enum.dart';
 import 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 import 'package:flutter_acs_card_reader/models/data_transfer.model.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'enums/device_search_state.enum.dart';
 import 'models/user.model.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -24,6 +25,7 @@ export 'models/user.model.dart';
 export 'package:flutter_acs_card_reader/models/card_terminal.model.dart';
 export 'package:flutter_acs_card_reader/enums/data_transfer_state.enum.dart';
 export 'package:flutter_acs_card_reader/models/data_transfer.model.dart';
+export 'package:permission_handler/permission_handler.dart';
 
 class FlutterAcsCardReader {
   static Timer? _timeOutTimer;
@@ -58,6 +60,8 @@ class FlutterAcsCardReader {
       StreamController<ResponseData>.broadcast();
   static final StreamController<String> _logDataController =
       StreamController<String>.broadcast();
+  static final StreamController<PermissionStatus> _permissionStatusController =
+      StreamController<PermissionStatus>.broadcast();
 
   // Streams to expose for listening to events
   static Stream<DeviceSearchState> get deviceSearchStateStream =>
@@ -79,6 +83,8 @@ class FlutterAcsCardReader {
   static Stream<ResponseData> get dataTransferStream =>
       _dataTransferController.stream;
   static Stream<String> get logDataStream => _logDataController.stream;
+  static Stream<PermissionStatus> get permissionStatusStream =>
+      _permissionStatusController.stream;
 
   /// Public
   ///
@@ -206,48 +212,62 @@ class FlutterAcsCardReader {
   ///
   static Future<void> _scanForDevices(int timeoutSeconds,
       {required User user}) async {
-    /// check adapter availability
-    if (await FlutterBluePlus.isSupported == false) {
-      debugPrint("Bluetooth not supported by this device");
-      _bluetoothStatusController.add(BluetoothAdapterState.unavailable);
-      return;
+    try {
+      /// check adapter availability
+      if (await FlutterBluePlus.isSupported == false) {
+        debugPrint("[INFO] Bluetooth not supported by this device");
+        _bluetoothStatusController.add(BluetoothAdapterState.unavailable);
+        return;
+      }
+
+      /// turn on bluetooth if we can (Android only)
+      /// for iOS, the user controls bluetooth enable/disable
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+
+      /// wait for bluetooth to be on & start searching for devices
+      /// note: for iOS the initial state is typically BluetoothAdapterState.unknown
+      /// note: if you have permissions issues you will get stuck at BluetoothAdapterState.unauthorized
+      await FlutterBluePlus.adapterState
+          .map((state) {
+            debugPrint("[INFO] [FlutterBluePlus.adapterState] $state");
+            _bluetoothStatusController.add(state);
+            return state;
+          })
+          .where(
+            (s) => s == BluetoothAdapterState.on,
+          )
+          .first
+          .then((value) => null);
+
+      /// Set listener for Scan results
+      ///
+      _setScanResultsListener(
+        user: user,
+        timeoutSeconds: timeoutSeconds,
+      );
+
+      /// Scan for BLE devices
+      /// Returns the Card terminal type
+      ///
+      await FlutterBluePlus.startScan(
+        timeout: Duration(
+          seconds: timeoutSeconds,
+        ),
+      );
+      _permissionStatusController.add(PermissionStatus.granted);
+    } on PlatformException catch (exception) {
+      _checkPermissions(exception.message);
+      debugPrint(
+          "[ERROR] [PlatformException] [_scanForDevices] ${exception.message}");
+      _bluetoothStatusController.add(BluetoothAdapterState.unauthorized);
+      await stopScanningSmartCardDevices();
+    } catch (exception) {
+      debugPrint("[ERROR] [_scanForDevices] ${exception.toString()}");
+      _bluetoothStatusController.add(BluetoothAdapterState.unauthorized);
+      await stopScanningSmartCardDevices();
     }
-
-    /// turn on bluetooth if we can (Android only)
-    /// for iOS, the user controls bluetooth enable/disable
-    if (Platform.isAndroid) {
-      await FlutterBluePlus.turnOn();
-    }
-
-    /// wait for bluetooth to be on & start searching for devices
-    /// note: for iOS the initial state is typically BluetoothAdapterState.unknown
-    /// note: if you have permissions issues you will get stuck at BluetoothAdapterState.unauthorized
-    await FlutterBluePlus.adapterState
-        .map((state) {
-          debugPrint(state.toString());
-          return state;
-        })
-        .where(
-          (s) => s == BluetoothAdapterState.on,
-        )
-        .first
-        .then((value) => null);
-
-    /// Set listener for Scan results
-    ///
-    _setScanResultsListener(
-      user: user,
-      timeoutSeconds: timeoutSeconds,
-    );
-
-    /// Scan for BLE devices
-    /// Returns the Card terminal type
-    ///
-    await FlutterBluePlus.startScan(
-      timeout: Duration(
-        seconds: timeoutSeconds,
-      ),
-    );
   }
 
   static _setScanResultsListener({
@@ -386,6 +406,37 @@ class FlutterAcsCardReader {
         return DeviceConnectionState.error;
       default:
         return DeviceConnectionState.disconnected;
+    }
+  }
+
+  static Future<void> _checkPermissions(String? message) async {
+    if (message == null) {
+    } else if (message.contains("ACCESS_COARSE_LOCATION") ||
+        message.contains("ACCESS_FINE_LOCATION")) {
+      PermissionWithService permissionWithService = Permission.location;
+      PermissionStatus status = await permissionWithService.status;
+      _permissionStatusController.add(status);
+      debugPrint(
+          "[INFO] [_checkPermissions] [ACCESS_FINE_LOCATION] status $status");
+    } else if (message.contains("BLUETOOTH_CONNECT")) {
+      Permission permission = Permission.bluetoothConnect;
+      PermissionStatus status = await permission.status;
+      _permissionStatusController.add(status);
+      debugPrint(
+          "[INFO] [_checkPermissions] [BLUETOOTH_CONNECT] status $status");
+    } else if (message.contains("BLUETOOTH_SCAN")) {
+      Permission permission = Permission.bluetoothScan;
+      PermissionStatus status = await permission.status;
+      _permissionStatusController.add(status);
+      debugPrint("[INFO] [_checkPermissions] [BLUETOOTH_SCAN] status $status");
+    } else if (message.contains("BLUETOOTH")) {
+      Permission permission = Permission.bluetooth;
+      PermissionStatus status = await permission.status;
+      _permissionStatusController.add(status);
+      debugPrint("[INFO] [_checkPermissions] [BLUETOOTH] status $status");
+    } else {
+      _permissionStatusController.add(PermissionStatus.denied);
+      debugPrint("[INFO] [_checkPermissions] status is unknown");
     }
   }
 }
