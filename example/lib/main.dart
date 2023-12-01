@@ -40,6 +40,7 @@ class _MyAppState extends State<MyApp> {
   int _currentReadStep = 0;
   DataTransferState _dataTransferState = DataTransferState.pending;
   String _data = "";
+  String _status = "Unknown";
 
   @override
   void initState() {
@@ -68,6 +69,7 @@ class _MyAppState extends State<MyApp> {
     // Listen to device search status
     _deviceSearchStateStream = FlutterAcsCardReader.deviceSearchStateStream
         .listen((DeviceSearchState state) {
+      debugPrint("[deviceSearchStateStream] $state");
       setState(() {
         _isScanning = state == DeviceSearchState.searching ? true : false;
         _deviceActivity = state;
@@ -78,6 +80,7 @@ class _MyAppState extends State<MyApp> {
     _deviceConnectionStateStream = FlutterAcsCardReader
         .deviceConnectionStateStream
         .listen((DeviceConnectionState state) {
+      debugPrint("[deviceConnectionStateStream] $state");
       setState(() {
         _deviceConnectionState = state;
       });
@@ -86,6 +89,7 @@ class _MyAppState extends State<MyApp> {
     // Listen to Location Status
     FlutterAcsCardReader.bluetoothStatusStream
         .listen((BluetoothAdapterState state) {
+      debugPrint("[bluetoothStatusStream] $state");
       setState(() {
         _bluetoothState = state;
       });
@@ -93,6 +97,7 @@ class _MyAppState extends State<MyApp> {
 
     // Listen to Found devices
     FlutterAcsCardReader.deviceFoundEventStream.listen((CardTerminal terminal) {
+      debugPrint("[deviceFoundEventStream] $terminal");
       setState(() {
         _deviceName = terminal.name ?? "NO NAME";
       });
@@ -101,6 +106,7 @@ class _MyAppState extends State<MyApp> {
     // Listen to Card connection State
     FlutterAcsCardReader.cardConnectionStateStream
         .listen((CardConnectionState state) {
+      debugPrint("[cardConnectionStateStream] $state");
       setState(() {
         _cardConnectionState = state;
       });
@@ -135,6 +141,15 @@ class _MyAppState extends State<MyApp> {
         debugPrint("Received Data: ${data.countryCode}");
       });
     });
+
+    // Listen to Permission Status
+    FlutterAcsCardReader.permissionStatusStream
+        .listen((PermissionStatus status) {
+      setState(() {
+        _status = status.toString();
+        debugPrint("Received Status: $status");
+      });
+    });
   }
 
   @override
@@ -148,6 +163,10 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Text("Permission status: $_status"),
+              const SizedBox(
+                height: 8,
+              ),
               Text("Location status: $_bluetoothState"),
               const SizedBox(
                 height: 8,
