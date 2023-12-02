@@ -32,6 +32,7 @@ private let totalReadStepsStatusNotifier = TotalReadStepsStatusNotifier()
 private let logDataNotifier = LogDataNotifier()
 
 class SmartCardReader: BluetoothTerminalManagerDelegate {
+    private var scanWorkItem: DispatchWorkItem?
     private var methodChannel: FlutterMethodChannel
     private var driver: Driver?
     private var cardTerminalType: Int = 0
@@ -65,6 +66,10 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
         self.driver = driver
         self.cardTerminalType = cardTerminalType
         self.timeoutSeconds = timeoutSeconds
+        
+        scanWorkItem = DispatchWorkItem {
+            self.mManager?.stopScan()
+        }
 
         mManager = BluetoothSmartCard.shared.manager
         guard let mManager = mManager else {
@@ -108,9 +113,7 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
             throw ACSError.unableToConnectToCard(description: UNABLE_TO_CONNECT_TO_CARD)
         } else {
             mManager?.startScan(terminalType: terminalType)
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(timeoutSeconds)) {
-                self.mManager?.stopScan()
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(timeoutSeconds), execute: scanWorkItem!)
         }
      }
     
@@ -164,6 +167,7 @@ class SmartCardReader: BluetoothTerminalManagerDelegate {
             print("\(TAG) - bluetoothTerminalManager: Discovered card containing \(terminal.name)")
             logData += "[ERROR] [\(TAG)]/[bluetoothTerminalManager] : \(terminal.name)\n"
             mManager?.stopScan()
+            scanWorkItem?.cancel()
             print("\(TAG) - bluetoothTerminalManager: Stopped scanning")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 do {
