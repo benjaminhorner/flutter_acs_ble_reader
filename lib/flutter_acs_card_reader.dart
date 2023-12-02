@@ -98,12 +98,16 @@ class FlutterAcsCardReader {
     }
   }
 
-  static Future<void> stopScanningSmartCardDevices() async {
+  static Future<void> stopScanningSmartCardDevices({bool stop = true}) async {
     try {
       await FlutterBluePlus.stopScan();
       _timeOutTimer?.cancel();
       _stopListeningToScanResults();
-      _deviceSearchStateController.add(DeviceSearchState.stopped);
+      if (stop) {
+        _deviceSearchStateController.add(DeviceSearchState.stopped);
+      } else {
+        _deviceConnectionStateController.add(DeviceConnectionState.connected);
+      }
     } on PlatformException catch (e) {
       throw ('Failed to stop scanning for smart card devices: ${e.message}');
     }
@@ -116,7 +120,7 @@ class FlutterAcsCardReader {
       if (call.method == 'onDeviceConnectionStatusEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("onDeviceConnectionStatusEvent is $state");
+          debugPrint("[INFO] [onDeviceConnectionStatusEvent] $state");
           DeviceConnectionState connectionState = _deviceConnectionState(state);
           _deviceConnectionStateController.add(connectionState);
           if (connectionState == DeviceConnectionState.error) {
@@ -126,73 +130,73 @@ class FlutterAcsCardReader {
           }
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onDeviceConnectionStatusEvent] $exception");
+          debugPrint("[ERROR] [onDeviceConnectionStatusEvent] $exception");
         }
       } else if (call.method == 'onDeviceFoundEvent') {
         try {
           final dynamic device = call.arguments;
-          debugPrint("onDeviceFoundEvent $device");
+          debugPrint("[INFO] [onDeviceFoundEvent] $device");
           CardTerminal cardTerminal = _mapToCardTerminal(device);
           _deviceFoundEventController.add(cardTerminal);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onDeviceFoundEvent] $exception");
+          debugPrint("[ERROR] [onDeviceFoundEvent] $exception");
         }
       } else if (call.method == 'onCardConnectionEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("onCardConnectionEvent $state");
+          debugPrint("[INFO] [onCardConnectionEvent] $state");
           CardConnectionState cardConnectionState =
               _mapToCardConnectionState(state);
           _cardConnectionStateEventController.add(cardConnectionState);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onCardConnectionEvent] $exception");
+          debugPrint("[ERROR] [onCardConnectionEvent] $exception");
         }
       } else if (call.method == 'onUpdateTotalReadStepsEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("onUpdateTotalReadStepsEvent $state");
+          debugPrint("[INFO] [onUpdateTotalReadStepsEvent] $state");
           _totalReadStepsStateEventController.add(state);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onUpdateTotalReadStepsEvent] $exception");
+          debugPrint("[ERROR] [onUpdateTotalReadStepsEvent] $exception");
         }
       } else if (call.method == 'onUpdateCurrentReadStepEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("onUpdateCurrentReadStepEvent $state");
+          debugPrint("[INFO] [onUpdateCurrentReadStepEvent] $state");
           _currentReadStepStateEventController.add(state);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onUpdateCurrentReadStepEvent] $exception");
+          debugPrint("[ERROR] [onUpdateCurrentReadStepEvent] $exception");
         }
       } else if (call.method == 'onUpdateDataTransferStateEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("onUpdateDataTransferStateEvent $state");
+          debugPrint("[INFO] [onUpdateDataTransferStateEvent] $state");
           _dataTransferStateEventController.add(_mapToDataTransferState(state));
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onUpdateDataTransferStateEvent] $exception");
+          debugPrint("[ERROR] [onUpdateDataTransferStateEvent] $exception");
         }
       } else if (call.method == 'onReceiveDataEvent') {
         try {
           final dynamic data = call.arguments;
-          debugPrint("onReceiveDataEvent $data");
+          debugPrint("[INFO] [onReceiveDataEvent] $data");
           _dataTransferController.add(_jsonStringToResponseData(data));
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onReceiveDataEvent] $exception");
+          debugPrint("[ERROR] [onReceiveDataEvent] $exception");
         }
       } else if (call.method == 'onReceiveLogDataEvent') {
         try {
           final dynamic data = call.arguments;
-          debugPrint("onReceiveLogDataEvent $data");
+          debugPrint("[INFO] [onReceiveLogDataEvent] $data");
           _logDataController.add(data);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[onReceiveLogDataEvent] $exception");
+          debugPrint("[ERROR] [onReceiveLogDataEvent] $exception");
         }
       }
     });
@@ -215,7 +219,7 @@ class FlutterAcsCardReader {
     try {
       /// check adapter availability
       if (await FlutterBluePlus.isSupported == false) {
-        debugPrint("[INFO] Bluetooth not supported by this device");
+        debugPrint("[WARNING] Bluetooth not supported by this device");
         _bluetoothStatusController.add(BluetoothAdapterState.unavailable);
         return;
       }
@@ -224,6 +228,7 @@ class FlutterAcsCardReader {
       /// for iOS, the user controls bluetooth enable/disable
       if (Platform.isAndroid) {
         await FlutterBluePlus.turnOn();
+        debugPrint("[INFO] Bluetooth was turned on");
       }
 
       /// wait for bluetooth to be on & start searching for devices
@@ -248,6 +253,10 @@ class FlutterAcsCardReader {
         timeoutSeconds: timeoutSeconds,
       );
 
+      /// Set Bluetooth Adapter State listener
+      ///
+      _setBluetoothAdapterStateListener();
+
       /// Scan for BLE devices
       /// Returns the Card terminal type
       ///
@@ -270,6 +279,12 @@ class FlutterAcsCardReader {
     }
   }
 
+  static _setBluetoothAdapterStateListener() {
+    FlutterBluePlus.adapterState.listen((BluetoothAdapterState state) {
+      debugPrint("[INFO] [_setBluetoothAdapterStateListener] $state");
+    });
+  }
+
   static _setScanResultsListener({
     required User user,
     required int timeoutSeconds,
@@ -286,7 +301,8 @@ class FlutterAcsCardReader {
               cardTerminalDeviceType: type,
               timeoutSeconds: timeoutSeconds,
             );
-            await stopScanningSmartCardDevices();
+            _timeOutTimer?.cancel();
+            await stopScanningSmartCardDevices(stop: false);
           }
         }
       });
@@ -307,7 +323,7 @@ class FlutterAcsCardReader {
     required int timeoutSeconds,
   }) async {
     debugPrint(
-        "Start searching for Card Terminals of type $cardTerminalDeviceType");
+        "[INFO] Connect to Card Terminals of type $cardTerminalDeviceType");
     try {
       Map<String, dynamic> mappedUser = _userToMap(user);
       await _channel.invokeMethod(
@@ -333,7 +349,7 @@ class FlutterAcsCardReader {
   static CardTerminalType? _cardTerminalType(BluetoothDevice device) {
     String name = device.platformName;
 
-    debugPrint("Found device with name $name");
+    debugPrint("[INFO] Found device with name $name");
 
     if (name.contains("ACR")) {
       if (name.contains("ACR3901")) {

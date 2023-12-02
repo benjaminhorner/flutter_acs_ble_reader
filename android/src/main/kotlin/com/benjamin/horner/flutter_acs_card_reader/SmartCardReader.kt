@@ -137,6 +137,7 @@ class SmartCardReader
                 override fun onScan(terminal: CardTerminal) {
                     if (terminal.name.contains("ACR")) {
                         mManager?.stopScan()
+                        mHandler.removeCallbacksAndMessages(null)
                         deviceNotifier.updateState(terminal, methodChannel)
                         deviceConnectionStatusNotifier.updateState("CONNECTED", methodChannel)
                         activity.runOnUiThread {
