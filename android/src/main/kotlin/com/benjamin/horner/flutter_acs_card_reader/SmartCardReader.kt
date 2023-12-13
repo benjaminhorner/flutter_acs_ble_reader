@@ -109,7 +109,8 @@ class SmartCardReader
         mManager = BluetoothSmartCard.getInstance(activity).getManager()
         if (mManager == null) {
             Log.e("$TAG connectToDevice", "mManager cannot be null")
-            logData += "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mManager cannot be null\n"
+            val errorMessage = "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mManager cannot be null\n"
+            logDataNotifier.updateState(errorMessage, methodChannel)
             deviceConnectionStatusNotifier.updateState(DEVICE_CONNECTION_STATE_ERROR, methodChannel)
             return
         }
@@ -117,7 +118,8 @@ class SmartCardReader
         mFactory = BluetoothSmartCard.getInstance(activity).getFactory()
         if (mFactory == null) {
             Log.e("$TAG connectToDevice", "mFactory cannot be null")
-            logData += "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mFactory cannot be null\n"
+            val errorMessage = "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mFactory cannot be null\n"
+            logDataNotifier.updateState(errorMessage, methodChannel)
             deviceConnectionStatusNotifier.updateState(DEVICE_CONNECTION_STATE_ERROR, methodChannel)
             return
         }
@@ -153,7 +155,8 @@ class SmartCardReader
             })
         } else {
             Log.e("$TAG startScan", "mManager cannot be null at this point")
-            logData += "[ERROR]/[SmartCardReader.kt]/[startScan] : mManager cannot be null at this point\n"
+            val errorMessage = "[ERROR]/[SmartCardReader.kt]/[startScan] : mManager cannot be null at this point\n"
+            logDataNotifier.updateState(errorMessage, methodChannel)
             deviceConnectionStatusNotifier.updateState(DEVICE_CONNECTION_STATE_ERROR, methodChannel)
             return
         }
@@ -202,8 +205,9 @@ class SmartCardReader
     }
 
     private fun handleError(e: Exception, methodChannel: MethodChannel) {
-        logData += "[ERROR]/[SmartCardReader.kt]/[handleError] : ${e.message}\n"
+        val errorMessage = "[ERROR]/[SmartCardReader.kt]/[handleError] : ${e.message}\n"
         Log.e("$TAG handleError", "${e.message}")
+        logDataNotifier.updateState(errorMessage, methodChannel)
         disconnectCard(methodChannel)
         dataTransferStateNotifier.updateState(DATA_TRANSFER_STATE_ERROR, methodChannel)
         currentReadStepStatusNotifier.updateState(uploadSteps, methodChannel)
