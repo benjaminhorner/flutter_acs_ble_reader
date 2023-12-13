@@ -94,6 +94,8 @@ class FlutterAcsCardReader {
       _deviceSearchStateController.add(DeviceSearchState.searching);
       await _scanForDevices(timeoutSeconds, user: user);
     } on PlatformException catch (e) {
+      debugPrint(
+          '[FlutterAcsCardReader] [ERROR] Failed to scan smart card devices: ${e.message}');
       throw Exception('Failed to scan smart card devices: ${e.message}');
     }
   }
@@ -109,6 +111,8 @@ class FlutterAcsCardReader {
         _deviceConnectionStateController.add(DeviceConnectionState.connected);
       }
     } on PlatformException catch (e) {
+      debugPrint(
+          '[FlutterAcsCardReader] [ERROR] Failed to stop scanning for smart card devices: ${e.message}');
       throw ('Failed to stop scanning for smart card devices: ${e.message}');
     }
   }
@@ -120,7 +124,8 @@ class FlutterAcsCardReader {
       if (call.method == 'onDeviceConnectionStatusEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("[INFO] [onDeviceConnectionStatusEvent] $state");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onDeviceConnectionStatusEvent] $state");
           DeviceConnectionState connectionState = _deviceConnectionState(state);
           _deviceConnectionStateController.add(connectionState);
           if (connectionState == DeviceConnectionState.error) {
@@ -130,73 +135,88 @@ class FlutterAcsCardReader {
           }
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onDeviceConnectionStatusEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onDeviceConnectionStatusEvent] $exception");
         }
       } else if (call.method == 'onDeviceFoundEvent') {
         try {
           final dynamic device = call.arguments;
-          debugPrint("[INFO] [onDeviceFoundEvent] $device");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onDeviceFoundEvent] $device");
           CardTerminal cardTerminal = _mapToCardTerminal(device);
           _deviceFoundEventController.add(cardTerminal);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onDeviceFoundEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onDeviceFoundEvent] $exception");
         }
       } else if (call.method == 'onCardConnectionEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("[INFO] [onCardConnectionEvent] $state");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onCardConnectionEvent] $state");
           CardConnectionState cardConnectionState =
               _mapToCardConnectionState(state);
           _cardConnectionStateEventController.add(cardConnectionState);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onCardConnectionEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onCardConnectionEvent] $exception");
         }
       } else if (call.method == 'onUpdateTotalReadStepsEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("[INFO] [onUpdateTotalReadStepsEvent] $state");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onUpdateTotalReadStepsEvent] $state");
           _totalReadStepsStateEventController.add(state);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onUpdateTotalReadStepsEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onUpdateTotalReadStepsEvent] $exception");
         }
       } else if (call.method == 'onUpdateCurrentReadStepEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("[INFO] [onUpdateCurrentReadStepEvent] $state");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onUpdateCurrentReadStepEvent] $state");
           _currentReadStepStateEventController.add(state);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onUpdateCurrentReadStepEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onUpdateCurrentReadStepEvent] $exception");
         }
       } else if (call.method == 'onUpdateDataTransferStateEvent') {
         try {
           final dynamic state = call.arguments;
-          debugPrint("[INFO] [onUpdateDataTransferStateEvent] $state");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onUpdateDataTransferStateEvent] $state");
           _dataTransferStateEventController.add(_mapToDataTransferState(state));
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onUpdateDataTransferStateEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onUpdateDataTransferStateEvent] $exception");
         }
       } else if (call.method == 'onReceiveDataEvent') {
         try {
           final dynamic data = call.arguments;
-          debugPrint("[INFO] [onReceiveDataEvent] $data");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onReceiveDataEvent] $data");
           _dataTransferController.add(_jsonStringToResponseData(data));
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onReceiveDataEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onReceiveDataEvent] $exception");
         }
       } else if (call.method == 'onReceiveLogDataEvent') {
         try {
           final dynamic data = call.arguments;
-          debugPrint("[INFO] [onReceiveLogDataEvent] $data");
+          debugPrint(
+              "[FlutterAcsCardReader] [INFO] [onReceiveLogDataEvent] $data");
           _logDataController.add(data);
         } catch (exception, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          debugPrint("[ERROR] [onReceiveLogDataEvent] $exception");
+          debugPrint(
+              "[FlutterAcsCardReader] [ERROR] [onReceiveLogDataEvent] $exception");
         }
       }
     });

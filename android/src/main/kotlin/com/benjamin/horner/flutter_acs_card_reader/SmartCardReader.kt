@@ -53,6 +53,9 @@ private val UNABLE_TO_CREATE_HASH_EXCEPTION = "Unable to Create Hash"
 private val UNABLE_TO_PERFORM_SELECTION = "Unable to select from card"
 private val UNABLE_TO_CONNECT_TO_CARD = "Unable to connect to card"
 private val HEX_DOES_NOT_CONTAIN_ENOUGH_BYTES = "Hex string does not contain enough bytes."
+private val DEVICE_CONNECTION_STATE_ERROR = "ERROR"
+private val CARD_CONNECTION_STATE_CONNECTED = "CONNECTED"
+private val CARD_CONNECTION_STATE_BONDING = "BONDING"
 private val DATA_TRANSFER_STATE_PENDING = "PENDING"
 private val DATA_TRANSFER_STATE_TRANSFERING = "TRANSFERING"
 private val DATA_TRANSFER_STATE_SUCCESS = "SUCCESS"
@@ -107,7 +110,7 @@ class SmartCardReader
         if (mManager == null) {
             Log.e("$TAG connectToDevice", "mManager cannot be null")
             logData += "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mManager cannot be null\n"
-            deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
+            deviceConnectionStatusNotifier.updateState(DEVICE_CONNECTION_STATE_ERROR, methodChannel)
             return
         }
 
@@ -115,7 +118,7 @@ class SmartCardReader
         if (mFactory == null) {
             Log.e("$TAG connectToDevice", "mFactory cannot be null")
             logData += "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mFactory cannot be null\n"
-            deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
+            deviceConnectionStatusNotifier.updateState(DEVICE_CONNECTION_STATE_ERROR, methodChannel)
             return
         }
 
@@ -139,11 +142,11 @@ class SmartCardReader
                         mManager?.stopScan()
                         mHandler.removeCallbacksAndMessages(null)
                         deviceNotifier.updateState(terminal, methodChannel)
-                        deviceConnectionStatusNotifier.updateState("CONNECTED", methodChannel)
                         activity.runOnUiThread {
                             logData += "[INFO]/[SmartCardReader.kt]/[startScan] : Terminal name ${terminal.name}\n"
                             Log.e("$TAG startScan", terminal.name)
                             connectToCard(terminal, methodChannel)
+                            deviceConnectionStatusNotifier.updateState(CARD_CONNECTION_STATE_CONNECTED, methodChannel)
                         }
                     }
                 }
@@ -151,7 +154,7 @@ class SmartCardReader
         } else {
             Log.e("$TAG startScan", "mManager cannot be null at this point")
             logData += "[ERROR]/[SmartCardReader.kt]/[startScan] : mManager cannot be null at this point\n"
-            deviceConnectionStatusNotifier.updateState("ERROR", methodChannel)
+            deviceConnectionStatusNotifier.updateState(DEVICE_CONNECTION_STATE_ERROR, methodChannel)
             return
         }
         
@@ -170,7 +173,7 @@ class SmartCardReader
         var cardChannel: CardChannel
 
         Log.e("$TAG connectToCard", "Connecting to card")
-        cardConnectionStateNotifier.updateState("BONDING", methodChannel)
+        cardConnectionStateNotifier.updateState(CARD_CONNECTION_STATE_BONDING, methodChannel)
 
         try {
             card = terminal.connect("*")
@@ -178,7 +181,7 @@ class SmartCardReader
             val atrBytes: ByteArray = atr.bytes
             val atrHex: String = hexToBytesHelper.byteArrayToHexString(atrBytes)
 
-            cardConnectionStateNotifier.updateState("CONNECTED", methodChannel)
+            cardConnectionStateNotifier.updateState(CARD_CONNECTION_STATE_CONNECTED, methodChannel)
 
             cardChannel = card.basicChannel
 
