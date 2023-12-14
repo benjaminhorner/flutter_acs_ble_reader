@@ -78,6 +78,7 @@ class SmartCardReader
     (private val methodChannel: MethodChannel) {
     private lateinit var driver: Driver
     private lateinit var activity: Activity
+    private lateinit var context: Context
     private var cardTerminalType: Int = 0
     private var mManager: BluetoothTerminalManager? = null
     private var mFactory: TerminalFactory? = null
@@ -104,9 +105,11 @@ class SmartCardReader
     ) {
         this.activity = activity
         this.driver = driver
+        this.context = context
         this.cardTerminalType = cardTerminalType
+        val bluetoothSmartCard: BluetoothSmartCard = BluetoothSmartCard.getInstance(context)
 
-        mManager = BluetoothSmartCard.getInstance(activity).getManager()
+        mManager = bluetoothSmartCard.getManager()
         if (mManager == null) {
             Log.e("$TAG connectToDevice", "mManager cannot be null")
             val errorMessage = "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mManager cannot be null\n"
@@ -115,7 +118,7 @@ class SmartCardReader
             return
         }
 
-        mFactory = BluetoothSmartCard.getInstance(activity).getFactory()
+        mFactory = bluetoothSmartCard.getFactory()
         if (mFactory == null) {
             Log.e("$TAG connectToDevice", "mFactory cannot be null")
             val errorMessage = "[ERROR]/[SmartCardReader.kt]/[connectToDevice] : mFactory cannot be null\n"
